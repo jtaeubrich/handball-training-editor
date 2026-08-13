@@ -526,47 +526,6 @@
     }
   }
 
-  /* ===== iPad Safari browser mode =====
-     Keep the three essential editing controls visible even when Safari's
-     browser chrome reduces the available viewport. Standalone/PWA mode
-     intentionally keeps the existing layout unchanged. */
-  body.ipad-browser .mobile-topbar {
-    display:flex !important;
-    position:fixed;
-    z-index:80;
-    top:max(8px, env(safe-area-inset-top));
-    left:max(8px, env(safe-area-inset-left));
-    right:auto;
-    width:auto;
-    height:46px;
-    padding:4px 6px;
-    border:1px solid #cfcfcf;
-    border-radius:12px;
-    background:rgba(255,255,255,.96);
-    box-shadow:0 3px 14px rgba(0,0,0,.16);
-    align-items:center;
-    gap:5px;
-    backdrop-filter:blur(8px);
-    -webkit-backdrop-filter:blur(8px);
-  }
-
-  body.ipad-browser .mobile-topbar button {
-    width:38px;
-    min-width:38px;
-    height:36px;
-    padding:3px;
-    border-radius:9px;
-    font-size:18px;
-  }
-
-  body.ipad-browser .mobile-topbar .mobile-title,
-  body.ipad-browser .mobile-topbar #mobilePropsBtn {
-    display:none !important;
-  }
-
-  body.ipad-browser header {
-    padding-left:148px;
-  }
 
   /* ===== Hilfe / README ===== */
   #helpBtn {
@@ -681,26 +640,12 @@
 
 </head>
 <body>
-<script>
-  (function () {
-    const iPadLike =
-      /iPad/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    const standalone =
-      window.matchMedia?.('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true;
-
-    if (iPadLike && !standalone) {
-      document.body.classList.add('ipad-browser');
-    }
-  })();
-</script>
 <div class="mobile-topbar mobile-only">
   <button id="mobileUndoBtn" title="Rückgängig">↶</button>
   <button id="mobileRedoBtn" title="Wiederholen">↷</button>
   <button id="mobileSelectBtn" class="active" title="Auswahl">↖</button>
   <div class="mobile-title">Handball-Skizzeneditor</div>
+  <button id="mobileHelpBtn" title="Hilfe">?</button>
   <button id="mobilePropsBtn" title="Eigenschaften">☰</button>
 </div>
 <div id="mobileBackdrop" class="mobile-backdrop"></div>
@@ -1170,7 +1115,8 @@
     Symbol wählen und auf die Zeichenfläche klicken.<br>
     Wege mit gedrückter Maustaste aufziehen. Mehrpunkt-Wege per Klick setzen. Zum Abschließen zweimal schnell auf denselben Endpunkt klicken.<br>
     In „Auswahl“ Objekte anklicken und verschieben. Auf freier Fläche mit gedrückter linker Maustaste ein Auswahlrechteck aufziehen; vollständig enthaltene Objekte werden markiert. Mit Shift/Ctrl/Cmd mehrere Objekte ergänzen. Mit Ctrl/Cmd + linker Maustaste auf eine bestehende Auswahl erzeugst du eine Kopie und kannst sie direkt verschieben.<br><br>
-    Angriffsspieler und Abwehrspieler können rechts über Winkel, Schaltflächen oder den blauen Rotationsgriff gedreht werden.
+    Angriffsspieler und Abwehrspieler können rechts über Winkel, Schaltflächen oder den blauen Rotationsgriff gedreht werden.<br>
+    Auf Touch-Geräten: Mit <b>zwei Fingern</b> auf der Zeichenfläche zoomen und gleichzeitig verschieben.
   </div>
 
 </aside>
@@ -2290,6 +2236,7 @@
   }
 
   helpBtn?.addEventListener('click', openHelp);
+  document.getElementById('mobileHelpBtn')?.addEventListener('click', openHelp);
   helpCloseBtn?.addEventListener('click', closeHelp);
 
   helpOpenReadmeBtn?.addEventListener('click', () => {
@@ -2480,7 +2427,183 @@
     };
   }
 
+
+  // ===== Touch gestures: two-finger pinch zoom + pan =====
+  const canvasScroller = canvas.closest('main');
+  const touchGesturePointers = new Map();
+
+  let touchGestureActive = false;
+  let touchGestureSuppressEditor = false;
+  let touchGestureStartDistance = 0;
+  let touchGestureStartZoom = 1;
+  let touchGestureAnchorCanvas = null;
+  let touchGestureSnapshot = null;
+
+  function touchGestureMidpoint() {
+    const pts = Array.from(touchGesturePointers.values());
+    if (pts.length < 2) return null;
+    return {
+      x:(pts[0].x + pts[1].x) / 2,
+      y:(pts[0].y + pts[1].y) / 2
+    };
+  }
+
+  function touchGestureDistance() {
+    const pts = Array.from(touchGesturePointers.values());
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+  }
+
+  function captureTouchGestureSnapshot() {
+    return {
+      objects:clone(objects),
+      history:clone(history),
+      redoStack:clone(redoStack),
+      selected,
+      selectedIndices:Array.from(selectedIndices),
+      drawing:drawing ? clone(drawing) : null
+    };
+  }
+
+  function restoreTouchGestureSnapshot() {
+    if (!touchGestureSnapshot) return;
+
+    objects = clone(touchGestureSnapshot.objects);
+    history = clone(touchGestureSnapshot.history);
+    redoStack = clone(touchGestureSnapshot.redoStack);
+    selected = touchGestureSnapshot.selected;
+    selectedIndices = new Set(touchGestureSnapshot.selectedIndices);
+    drawing = touchGestureSnapshot.drawing ? clone(touchGestureSnapshot.drawing) : null;
+
+    dragging = false;
+    draggingEndpoint = null;
+    rotating = false;
+    rotatingGroup = false;
+    groupRotateCenter = null;
+    groupDragLast = null;
+    selectionRect = null;
+
+    updateProperties();
+    draw();
+  }
+
+  function beginTouchGesture() {
+    const midpoint = touchGestureMidpoint();
+    const distance = touchGestureDistance();
+    if (!midpoint || !distance) return;
+
+    restoreTouchGestureSnapshot();
+
+    touchGestureActive = true;
+    touchGestureSuppressEditor = true;
+    touchGestureStartDistance = distance;
+    touchGestureStartZoom = canvasZoom;
+
+    const r = canvas.getBoundingClientRect();
+    touchGestureAnchorCanvas = {
+      x:(midpoint.x - r.left) * canvas.width / r.width,
+      y:(midpoint.y - r.top) * canvas.height / r.height
+    };
+
+    for (const pointerId of touchGesturePointers.keys()) {
+      try {
+        if (canvas.hasPointerCapture(pointerId)) {
+          canvas.releasePointerCapture(pointerId);
+        }
+      } catch (_) {}
+    }
+
+    status.textContent = 'Zwei-Finger-Zoom / Verschieben';
+  }
+
+  function updateTouchGesture() {
+    if (!touchGestureActive || touchGesturePointers.size < 2 || !canvasScroller) return;
+
+    const midpoint = touchGestureMidpoint();
+    const distance = touchGestureDistance();
+    if (!midpoint || !distance || !touchGestureAnchorCanvas) return;
+
+    const ratio = distance / touchGestureStartDistance;
+    const targetZoom = Math.max(0.25, Math.min(2, touchGestureStartZoom * ratio));
+
+    setCanvasZoom(targetZoom * 100);
+
+    const r = canvas.getBoundingClientRect();
+    const anchorClientX =
+      r.left + touchGestureAnchorCanvas.x * r.width / canvas.width;
+    const anchorClientY =
+      r.top + touchGestureAnchorCanvas.y * r.height / canvas.height;
+
+    canvasScroller.scrollLeft += anchorClientX - midpoint.x;
+    canvasScroller.scrollTop  += anchorClientY - midpoint.y;
+  }
+
   canvas.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
+
+    if (touchGesturePointers.size === 0) {
+      touchGestureSnapshot = captureTouchGestureSnapshot();
+    }
+
+    touchGesturePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+
+    if (touchGesturePointers.size === 2) {
+      beginTouchGesture();
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    } else if (touchGestureSuppressEditor) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, {capture:true});
+
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'touch' || !touchGesturePointers.has(e.pointerId)) return;
+
+    touchGesturePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+
+    if (touchGestureActive) {
+      updateTouchGesture();
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    } else if (touchGestureSuppressEditor) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, {capture:true});
+
+  function finishTouchGesturePointer(e) {
+    if (e.pointerType !== 'touch') return;
+
+    const wasGesture = touchGestureActive || touchGestureSuppressEditor;
+    touchGesturePointers.delete(e.pointerId);
+
+    if (touchGestureActive && touchGesturePointers.size < 2) {
+      touchGestureActive = false;
+      touchGestureAnchorCanvas = null;
+    }
+
+    if (touchGesturePointers.size === 0) {
+      touchGestureSuppressEditor = false;
+      touchGestureSnapshot = null;
+      status.textContent = tool === 'select'
+        ? 'Auswahlmodus'
+        : 'Werkzeug: ' + (typeNames[tool] || tool);
+    }
+
+    if (wasGesture) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }
+
+  canvas.addEventListener('pointerup', finishTouchGesturePointer, {capture:true});
+  canvas.addEventListener('pointercancel', finishTouchGesturePointer, {capture:true});
+
+
+  canvas.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch' && touchGestureSuppressEditor) return;
+
     if (!isMultiPointPath(tool)) {
       canvas.setPointerCapture(e.pointerId);
     }
@@ -2691,6 +2814,8 @@
   });
 
   canvas.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch' && touchGestureSuppressEditor) return;
+
     const p = pos(e);
 
     if (rotatingGroup && groupRotateCenter && selectedIndices.size > 1) {
@@ -6125,7 +6250,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 68,
+      version: 69,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {

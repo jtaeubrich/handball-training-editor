@@ -672,6 +672,13 @@
   }
 
 </style>
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Handballtrainer">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+
 </head>
 <body>
 <script>
@@ -6118,7 +6125,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 67,
+      version: 68,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {

@@ -131,6 +131,7 @@
 /* ===== Smartphone layout (desktop remains unchanged) ===== */
 .mobile-only { display:none; }
 .tool-sheet,
+.mobile-settings-sheet,
 .mobile-backdrop,
 .mobile-hint { display:none; }
 
@@ -331,6 +332,114 @@
   }
 
   .tool-sheet.open { display:block; }
+
+  .mobile-settings-sheet {
+    position:fixed;
+    z-index:46;
+    left:8px;
+    right:8px;
+    bottom:84px;
+    max-height:76vh;
+    background:#fff;
+    border:1px solid #ccc;
+    border-radius:18px;
+    box-shadow:0 10px 30px rgba(0,0,0,.24);
+    overflow:hidden;
+    display:none;
+  }
+
+  .mobile-settings-sheet.open {
+    display:flex;
+    flex-direction:column;
+  }
+
+  .mobile-settings-content {
+    overflow:auto;
+    padding:4px 12px 18px;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  .mobile-settings-section {
+    padding:12px 0;
+    border-top:1px solid #e3e3e3;
+  }
+
+  .mobile-settings-section:first-child { border-top:0; }
+
+  .mobile-settings-section h4 {
+    margin:0 0 10px;
+    font-size:14px;
+  }
+
+  .mobile-settings-grid {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:10px;
+  }
+
+  .mobile-settings-grid label {
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    min-width:0;
+    font-size:12px;
+    font-weight:700;
+  }
+
+  .mobile-settings-grid input:not([type="range"]):not([type="checkbox"]),
+  .mobile-settings-grid select,
+  .mobile-settings-grid button {
+    width:100%;
+    min-height:42px;
+  }
+
+  .mobile-settings-wide { grid-column:1 / -1; }
+
+  .mobile-check-row {
+    grid-column:1 / -1;
+    flex-direction:row !important;
+    align-items:center;
+  }
+
+  .mobile-check-row input { width:24px; height:24px; }
+
+  .mobile-range-row {
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .mobile-range-row input[type="range"] {
+    flex:1;
+    min-width:0;
+  }
+
+  .mobile-range-row button {
+    width:42px !important;
+    min-width:42px;
+    min-height:42px;
+  }
+
+  .mobile-range-row span {
+    min-width:46px;
+    text-align:center;
+    font-weight:700;
+  }
+
+  .mobile-settings-actions {
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:9px;
+  }
+
+  .mobile-settings-actions button { min-height:44px; }
+
+  @media (max-width:430px) {
+    .mobile-title { display:none; }
+    .mobile-settings-grid { grid-template-columns:1fr; }
+    .mobile-settings-wide,
+    .mobile-check-row { grid-column:auto; }
+  }
 
   .tool-sheet-header {
     display:flex;
@@ -645,8 +754,9 @@
   <button id="mobileRedoBtn" title="Wiederholen">↷</button>
   <button id="mobileSelectBtn" class="active" title="Auswahl">↖</button>
   <div class="mobile-title">Handball-Skizzeneditor</div>
+  <button id="mobileSettingsBtn" title="Einstellungen" aria-label="Einstellungen">⚙</button>
   <button id="mobileHelpBtn" title="Hilfe">?</button>
-  <button id="mobilePropsBtn" title="Eigenschaften">☰</button>
+  <button id="mobilePropsBtn" title="Objekteigenschaften">☰</button>
 </div>
 <div id="mobileBackdrop" class="mobile-backdrop"></div>
 <div id="mobileToolSheet" class="tool-sheet">
@@ -658,6 +768,111 @@
 </div>
 <div id="mobileHint" class="mobile-hint">Werkzeug ausgewählt</div>
 
+<div id="mobileSettingsSheet" class="mobile-settings-sheet">
+  <div class="tool-sheet-header">
+    <span>Einstellungen</span>
+    <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
+  </div>
+
+  <div class="mobile-settings-content">
+    <section class="mobile-settings-section">
+      <h4>Neue Elemente</h4>
+      <div class="mobile-settings-grid">
+        <label>Linienfarbe<input id="mStrokeColor" type="color"></label>
+        <label>Linienstärke<input id="mStrokeWidth" type="number" min="1" max="10" step="0.5"></label>
+        <label>Standardgröße<input id="mSymbolSize" type="number" min="12" max="100"></label>
+        <div class="mobile-settings-wide">
+          <strong style="font-size:12px">Freihandfarbe</strong>
+          <div class="color-swatches" style="margin-top:6px">
+            <button class="color-swatch mobile-freehand-swatch" data-color="#111111" style="background:#111111" title="Schwarz"></button>
+            <button class="color-swatch mobile-freehand-swatch" data-color="#d32f2f" style="background:#d32f2f" title="Rot"></button>
+            <button class="color-swatch mobile-freehand-swatch" data-color="#1976d2" style="background:#1976d2" title="Blau"></button>
+            <button class="color-swatch mobile-freehand-swatch" data-color="#2e9d45" style="background:#2e9d45" title="Grün"></button>
+            <input id="mFreehandCustomColor" type="color" value="#7b4db3" title="Freie Farbe" style="width:42px;height:42px;padding:2px">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mobile-settings-section">
+      <h4>Spielfeld</h4>
+      <div class="mobile-settings-grid">
+        <label>Spielfeld
+          <select id="mCourtMode">
+            <option value="none">Kein Spielfeld</option>
+            <option value="half">Halbfeld</option>
+            <option value="full">Ganzes Feld</option>
+          </select>
+        </label>
+        <label>Farbschema
+          <select id="mCourtTheme">
+            <option value="gray">Grau</option>
+            <option value="orange">Orange</option>
+            <option value="blue">Blau</option>
+          </select>
+        </label>
+        <label>Drehung
+          <select id="mCourtRotation">
+            <option value="0">0°</option>
+            <option value="90">90°</option>
+            <option value="180">180°</option>
+            <option value="270">270°</option>
+          </select>
+        </label>
+        <label class="mobile-settings-wide">Sektoren
+          <div class="mobile-range-row">
+            <input id="mSectorOpacity" type="range" min="0" max="100" step="5">
+            <span id="mSectorOpacityValue">90%</span>
+          </div>
+        </label>
+        <label class="mobile-check-row"><input id="mGridVisible" type="checkbox"> Raster anzeigen</label>
+      </div>
+    </section>
+
+    <section class="mobile-settings-section">
+      <h4>Storyboard</h4>
+      <div class="mobile-settings-grid">
+        <label>Raster-Layout
+          <select id="mLayoutGrid">
+            <option value="1x1">1×1</option>
+            <option value="2x1">2×1</option>
+            <option value="3x1">3×1</option>
+            <option value="4x1">4×1</option>
+            <option value="1x2">1×2</option>
+            <option value="2x2">2×2</option>
+            <option value="3x2">3×2</option>
+            <option value="4x2">4×2</option>
+          </select>
+        </label>
+        <label>Aktive Zelle<select id="mActiveCellSelect"></select></label>
+        <button id="mDuplicateCellBtn" class="mobile-settings-wide" type="button">Zelle duplizieren →</button>
+      </div>
+    </section>
+
+    <section class="mobile-settings-section">
+      <h4>Ansicht</h4>
+      <label class="mobile-settings-wide">Zoom
+        <div class="mobile-range-row">
+          <button id="mZoomOutBtn" type="button">−</button>
+          <input id="mZoomRange" type="range" min="25" max="200" step="5">
+          <span id="mZoomValue">100%</span>
+          <button id="mZoomInBtn" type="button">+</button>
+        </div>
+      </label>
+    </section>
+
+    <section class="mobile-settings-section">
+      <h4>Datei</h4>
+      <div class="mobile-settings-actions">
+        <button id="mJsonSaveBtn" type="button">Projekt speichern</button>
+        <button id="mJsonLoadBtn" type="button">Projekt laden</button>
+        <button id="mPngBtn" type="button">PNG speichern</button>
+        <button id="mSvgBtn" type="button">SVG speichern</button>
+        <button id="mClearBtn" type="button">Alles löschen</button>
+      </div>
+    </section>
+  </div>
+</div>
 
 <header>
   <div class="group">
@@ -1037,7 +1252,30 @@
     </div>
   </div>
 
+  <button class="tool" data-tool="freehand" id="freehandToolBtn">
+    <span class="ico">
+      <svg viewBox="0 0 48 32" aria-hidden="true">
+        <path d="M4 24 C10 5 16 27 22 11 C27 1 31 27 44 7"
+              fill="none" stroke="currentColor" stroke-width="2.8"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    Freihand zeichnen
+  </button>
 
+  <div id="freehandColorPanel" class="marker-colors" hidden>
+    <div class="title">Freihandfarbe</div>
+    <div class="color-swatches">
+      <button class="color-swatch freehand-swatch" data-color="#111111" style="background:#111111" title="Schwarz"></button>
+      <button class="color-swatch freehand-swatch" data-color="#d32f2f" style="background:#d32f2f" title="Rot"></button>
+      <button class="color-swatch freehand-swatch" data-color="#1976d2" style="background:#1976d2" title="Blau"></button>
+      <button class="color-swatch freehand-swatch" data-color="#2e9d45" style="background:#2e9d45" title="Grün"></button>
+      <div class="custom-color-wrap">
+        <input id="freehandCustomColor" type="color" value="#7b4db3" title="Freie Farbe">
+        <span>frei</span>
+      </div>
+    </div>
+  </div>
 
   <h3>Sonstiges</h3>
 
@@ -1079,6 +1317,22 @@
         Markierung
       </button>
 
+      <button class="tool" data-tool="ball">
+        <span class="ico">
+          <svg viewBox="-20 -20 40 40" aria-hidden="true">
+            <circle cx="0" cy="0" r="13" fill="#fff" stroke="#222" stroke-width="1.7"/>
+            <polygon points="0,-5.4 5.1,-1.7 3.2,4.4 -3.2,4.4 -5.1,-1.7"
+                     fill="#222"/>
+            <path d="M0,-5.4 L-4.4,-10.8 M5.1,-1.7 L11,-4.2 M3.2,4.4 L7.7,9.7 M-3.2,4.4 L-7.8,9.6 M-5.1,-1.7 L-11,-4.3"
+                  fill="none" stroke="#222" stroke-width="1.4"/>
+            <path d="M-4.4,-10.8 L3.8,-11.7 L11,-4.2 L11.1,4.3 L7.7,9.7
+                     M-4.4,-10.8 L-11,-4.3 L-11.1,4.2 L-7.8,9.6"
+                  fill="none" stroke="#777" stroke-width="1"/>
+          </svg>
+        </span>
+        Ball
+      </button>
+
       <button class="tool" data-tool="bench">
         <span class="ico"><svg viewBox="0 0 56 28"><rect x="5" y="9" width="46" height="10" rx="2" fill="#b8874f" stroke="#6f4a28" stroke-width="2"/></svg></span>
         Turnbank
@@ -1097,7 +1351,7 @@
   </div>
 
   <div id="markerColorPanel" class="marker-colors" hidden>
-    <div class="title">Farbe für Hütchen / Reifen / Plättchen / Plättchen</div>
+    <div class="title">Farbe für Hütchen / Reifen / Markierung</div>
     <div class="color-swatches">
       <button class="color-swatch marker-swatch" data-color="#f2c500" style="background:#f2c500" title="Gelb" aria-label="Gelb"></button>
       <button class="color-swatch marker-swatch" data-color="#d32f2f" style="background:#d32f2f" title="Rot" aria-label="Rot"></button>
@@ -1653,6 +1907,8 @@
 
   const markerColorPanel = document.getElementById('markerColorPanel');
   const markerCustomColor = document.getElementById('markerCustomColor');
+  const freehandColorPanel = document.getElementById('freehandColorPanel');
+  const freehandCustomColor = document.getElementById('freehandCustomColor');
   const markerPropColors = document.getElementById('markerPropColors');
   const pathPropColors = document.getElementById('pathPropColors');
   const attackerPropColors = document.getElementById('attackerPropColors');
@@ -1660,6 +1916,7 @@
 
   const markerTypes = new Set(['cone','ring','disc']);
   let markerColor = '#f2c500';
+  let freehandColor = '#111111';
 
   let objects = [];
   let redoStack = [];
@@ -1767,6 +2024,8 @@
     cone: 'Hütchen',
     ring: 'Reifen',
     disc: 'Markierung',
+    ball: 'Ball',
+    freehand: 'Freihandzeichnung',
     bench: 'Turnbank',
     mat: 'Sportmatte',
     crashMat: 'Weichbodenmatte'
@@ -1835,6 +2094,13 @@
       return;
     }
 
+    if (o.kind === 'freehand') {
+      o.points.forEach(pt => { pt.x += dx; pt.y += dy; });
+      o.x1 += dx; o.y1 += dy;
+      o.x2 += dx; o.y2 += dy;
+      return;
+    }
+
     o.x1 += dx; o.y1 += dy;
     o.x2 += dx; o.y2 += dy;
 
@@ -1857,6 +2123,15 @@
 
     if (o.kind === 'symbol') {
       return {x:o.x, y:o.y};
+    }
+
+    if (o.kind === 'freehand' && Array.isArray(o.points) && o.points.length) {
+      const xs = o.points.map(pt => pt.x);
+      const ys = o.points.map(pt => pt.y);
+      return {
+        x:(Math.min(...xs)+Math.max(...xs))/2,
+        y:(Math.min(...ys)+Math.max(...ys))/2
+      };
     }
 
     if (Number.isFinite(+o.x1) && Number.isFinite(+o.y1) &&
@@ -1904,6 +2179,19 @@
       }
 
       rotateLabelOffset(o, angleDeg);
+      return;
+    }
+
+    if (o.kind === 'freehand') {
+      o.points.forEach(pt => {
+        const p = rotatePointAround(pt.x, pt.y, cx, cy, angleDeg);
+        pt.x = p.x;
+        pt.y = p.y;
+      });
+      if (o.points.length) {
+        o.x1 = o.points[0].x; o.y1 = o.points[0].y;
+        o.x2 = o.points[o.points.length-1].x; o.y2 = o.points[o.points.length-1].y;
+      }
       return;
     }
 
@@ -2088,7 +2376,7 @@
     if (t === 'defender' || t === 'goalkeeper') {
       defenseGroupSelection = t;
     }
-    if (['cone','ring','disc','bench','mat','crashMat'].includes(t)) {
+    if (['cone','ring','disc','ball','bench','mat','crashMat'].includes(t)) {
       otherGroupSelection = t;
     }
 
@@ -2106,7 +2394,7 @@
     if (t === 'defender' || t === 'goalkeeper') {
       defenseGroupBtn?.classList.add('active');
     }
-    if (['cone','ring','disc','bench','mat','crashMat'].includes(t)) {
+    if (['cone','ring','disc','ball','bench','mat','crashMat'].includes(t)) {
       otherGroupBtn?.classList.add('active');
     }
     if (typeof pathVariantToGroup !== 'undefined' && pathVariantToGroup[t]) {
@@ -2114,10 +2402,14 @@
     }
 
     status.textContent = t === 'select' ? 'Auswahlmodus' : 'Werkzeug: ' + (typeNames[t] || t);
-    canvas.style.cursor = t === 'select' ? 'default' : (pathTools.has(t) ? 'crosshair' : 'copy');
+    canvas.style.cursor = t === 'select'
+      ? 'default'
+      : ((pathTools.has(t) || t === 'freehand') ? 'crosshair' : 'copy');
 
     markerColorPanel.hidden = !markerTypes.has(t);
+    freehandColorPanel.hidden = t !== 'freehand';
     updateMarkerSwatches();
+    updateFreehandSwatches();
 
     updateProperties();
     draw();
@@ -2694,6 +2986,18 @@
       return;
     }
 
+    if (tool === 'freehand') {
+      drawing = {
+        kind:'freehand',
+        type:'freehand',
+        points:[{x:p.x,y:p.y}],
+        x1:p.x, y1:p.y, x2:p.x, y2:p.y,
+        color:freehandColor,
+        width:+strokeWidth.value
+      };
+      return;
+    }
+
     if (isMultiPointPath(tool)) {
       const now = performance.now();
 
@@ -2773,6 +3077,7 @@
       tool === 'bench' ? '#b8874f' :
       tool === 'mat' ? '#4da3d9' :
       tool === 'crashMat' ? '#397cb8' :
+      tool === 'ball' ? '#ffffff' :
       markerTypes.has(tool) ? markerColor :
       strokeColor.value;
 
@@ -2781,7 +3086,9 @@
       type:tool,
       x:p.x,
       y:p.y,
-      size:+symbolSize.value,
+      size:tool === 'ball'
+        ? Math.max(24, Math.round(+symbolSize.value * 0.68))
+        : +symbolSize.value,
       color:defaultSymbolColor,
       width:+strokeWidth.value,
       rotation:['attacker','attackerBall','defender','goalkeeper'].includes(tool)
@@ -2856,7 +3163,15 @@
     }
 
     if (drawing) {
-      if (isMultiPointPath(drawing) && Array.isArray(drawing.points)) {
+      if (drawing.kind === 'freehand') {
+        const pts = drawing.points;
+        const last = pts[pts.length - 1];
+        if (!last || Math.hypot(p.x-last.x, p.y-last.y) >= 1.5) {
+          pts.push({x:p.x,y:p.y});
+          drawing.x2 = p.x;
+          drawing.y2 = p.y;
+        }
+      } else if (isMultiPointPath(drawing) && Array.isArray(drawing.points)) {
         drawing.points[drawing.points.length - 1] = {x:p.x,y:p.y};
         syncMultiPathExtents(drawing);
       } else {
@@ -2990,6 +3305,18 @@
     }
 
     if (drawing) {
+      if (drawing.kind === 'freehand') {
+        if (Array.isArray(drawing.points) && drawing.points.length >= 2) {
+          objects.push(drawing);
+          setSingleSelection(objects.length - 1);
+          commit();
+        }
+        drawing = null;
+        updateProperties();
+        draw();
+        return;
+      }
+
       if (isMultiPointPath(drawing)) {
           draw();
         drawObject(ctx, drawing, false);
@@ -3097,7 +3424,9 @@
           return i;
         }
       } else {
-        if (isMultiPointPath(o)) {
+        if (o.kind === 'freehand') {
+          if (distToPolyline(x,y,o.points) < Math.max(9, o.width + 5)) return i;
+        } else if (isMultiPointPath(o)) {
           if (distToPolyline(x,y,sampledMultiPathPoints(o, 18)) < 10) return i;
         } else if (isComplexPath(o)) {
           if (distToBezier(x,y,o) < 10) return i;
@@ -4345,7 +4674,7 @@
     } else {
       let minX, minY, maxX, maxY;
 
-      if (isMultiPointPath(o) && Array.isArray(o.points) && o.points.length) {
+      if ((o.kind === 'freehand' || isMultiPointPath(o)) && Array.isArray(o.points) && o.points.length) {
         minX = Math.min(...o.points.map(pt => pt.x)) - 8;
         minY = Math.min(...o.points.map(pt => pt.y)) - 8;
         maxX = Math.max(...o.points.map(pt => pt.x)) + 8;
@@ -4370,7 +4699,9 @@
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = '#1976d2';
 
-      if (isMultiPointPath(o) && Array.isArray(o.points)) {
+      if (o.kind === 'freehand') {
+        // no per-point edit handles for freehand drawings
+      } else if (isMultiPointPath(o) && Array.isArray(o.points)) {
         o.points.forEach(pt => {
           ctx.beginPath();
           ctx.arc(pt.x,pt.y,7,0,Math.PI*2);
@@ -4698,6 +5029,59 @@
         c.fill();
       }
 
+      else if (o.type === 'ball') {
+        const r = s * .43;
+        c.save();
+
+        c.fillStyle = '#fff';
+        c.strokeStyle = '#222';
+        c.lineWidth = Math.max(1.5, o.width*.75);
+        c.beginPath();
+        c.arc(0,0,r,0,Math.PI*2);
+        c.fill();
+        c.stroke();
+
+        // Central pentagon and surrounding panel seams for a classic football look.
+        const pent = [];
+        for (let i=0; i<5; i++) {
+          const a = -Math.PI/2 + i * Math.PI*2/5;
+          pent.push({x:Math.cos(a)*r*.38, y:Math.sin(a)*r*.38});
+        }
+
+        c.fillStyle = '#222';
+        c.beginPath();
+        c.moveTo(pent[0].x,pent[0].y);
+        for (let i=1;i<pent.length;i++) c.lineTo(pent[i].x,pent[i].y);
+        c.closePath();
+        c.fill();
+
+        const outerAngles = [-108,-36,36,108,180];
+        c.strokeStyle = '#222';
+        c.lineWidth = Math.max(1.15, s*.035);
+        pent.forEach((p,i) => {
+          const a = outerAngles[i] * Math.PI/180;
+          c.beginPath();
+          c.moveTo(p.x,p.y);
+          c.lineTo(Math.cos(a)*r*.88, Math.sin(a)*r*.88);
+          c.stroke();
+        });
+
+        // Additional polygon seams suggest the surrounding hexagonal panels.
+        c.strokeStyle = '#777';
+        c.lineWidth = Math.max(.8, s*.025);
+        const rim = outerAngles.map(a => {
+          const ar=a*Math.PI/180;
+          return {x:Math.cos(ar)*r*.88,y:Math.sin(ar)*r*.88};
+        });
+        c.beginPath();
+        c.moveTo(rim[0].x,rim[0].y);
+        for (let i=1;i<rim.length;i++) c.lineTo(rim[i].x,rim[i].y);
+        c.closePath();
+        c.stroke();
+
+        c.restore();
+      }
+
       else if (o.type === 'coach') {
         c.font=`800 ${s*1.05}px Arial`;
         c.textAlign='center';
@@ -4807,6 +5191,16 @@
         c.restore();
       }
 
+      c.restore();
+    }
+
+    else if (o.kind === 'freehand') {
+      if (Array.isArray(o.points) && o.points.length) {
+        c.beginPath();
+        c.moveTo(o.points[0].x,o.points[0].y);
+        for (let i=1;i<o.points.length;i++) c.lineTo(o.points[i].x,o.points[i].y);
+        c.stroke();
+      }
       c.restore();
     }
 
@@ -5261,6 +5655,27 @@
       );
     });
   }
+
+  function updateFreehandSwatches() {
+    document.querySelectorAll('.freehand-swatch').forEach(btn => {
+      btn.classList.toggle(
+        'active',
+        btn.dataset.color.toLowerCase() === freehandColor.toLowerCase()
+      );
+    });
+  }
+
+  function setFreehandColor(color) {
+    freehandColor = color;
+    freehandCustomColor.value = color;
+    updateFreehandSwatches();
+  }
+
+  document.querySelectorAll('.freehand-swatch').forEach(btn => {
+    btn.addEventListener('click', () => setFreehandColor(btn.dataset.color));
+  });
+
+  freehandCustomColor.addEventListener('input', () => setFreehandColor(freehandCustomColor.value));
 
   function setMarkerColor(color) {
     markerColor = color;
@@ -5773,6 +6188,29 @@ ${labelToSvg(o)}`;
 ${close}`;
       }
 
+      if (o.type === 'ball') {
+        const r=s*.43;
+        const pent = [];
+        for (let i=0;i<5;i++) {
+          const a=-Math.PI/2+i*Math.PI*2/5;
+          pent.push([Math.cos(a)*r*.38,Math.sin(a)*r*.38]);
+        }
+        const outerAngles=[-108,-36,36,108,180];
+        const rim=outerAngles.map(a => {
+          const ar=a*Math.PI/180;
+          return [Math.cos(ar)*r*.88,Math.sin(ar)*r*.88];
+        });
+        const pentPts=pent.map(p=>`${p[0]},${p[1]}`).join(' ');
+        const rimPts=rim.map(p=>`${p[0]},${p[1]}`).join(' ');
+        const seams=pent.map((p,i)=>`M ${p[0]} ${p[1]} L ${rim[i][0]} ${rim[i][1]}`).join(' ');
+        return `${open}
+  <circle cx="0" cy="0" r="${r}" fill="#fff" stroke="#222" stroke-width="${Math.max(1.5,sw*.75)}"/>
+  <polygon points="${pentPts}" fill="#222"/>
+  <path d="${seams}" fill="none" stroke="#222" stroke-width="${Math.max(1.15,s*.035)}"/>
+  <polygon points="${rimPts}" fill="none" stroke="#777" stroke-width="${Math.max(.8,s*.025)}"/>
+${close}`;
+      }
+
       if (o.type === 'coach') {
         return `${open}
   <text x="0" y="${s*.34}" text-anchor="middle" font-family="Arial" font-weight="800" font-size="${s*1.05}" fill="${col}">T</text>
@@ -5832,6 +6270,13 @@ ${close}`;
         fill="none" stroke="#8dc7ed" stroke-opacity=".7" stroke-width="1"/>
 ${close}`;
       }
+    }
+
+    else if (o.kind === 'freehand') {
+      if (!Array.isArray(o.points) || o.points.length < 2) return '';
+      return `<polyline points="${svgPoints(o.points)}" fill="none"
+               stroke="${col}" stroke-width="${sw}"
+               stroke-linecap="round" stroke-linejoin="round"/>`;
     }
 
     else {
@@ -6250,7 +6695,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 69,
+      version: 73,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -6745,6 +7190,9 @@ ${rotateClose}`;
   const mobileBackdrop = document.getElementById('mobileBackdrop');
   const mobileHint = document.getElementById('mobileHint');
   const mobilePropsBtn = document.getElementById('mobilePropsBtn');
+  const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
+  const mobileSettingsSheet = document.getElementById('mobileSettingsSheet');
+  const mobileSettingsClose = document.getElementById('mobileSettingsClose');
   const mobileSelectBtn = document.getElementById('mobileSelectBtn');
   const mobileUndoBtn = document.getElementById('mobileUndoBtn');
   const mobileRedoBtn = document.getElementById('mobileRedoBtn');
@@ -6757,11 +7205,11 @@ ${rotateClose}`;
     },
     paths: {
       title:'Wege / Aktionen',
-      tools:['run','complexRun','runMulti','pass','passCurve','passFake','passFakeCurve','runBall','runBallCurve','runBallMulti','tip','tipCurve','dribble','dribbleCurve','shot','shotCurve','shotFake','shotFakeCurve','screen','screenCurve','screenMulti']
+      tools:['run','complexRun','runMulti','pass','passCurve','passFake','passFakeCurve','runBall','runBallCurve','runBallMulti','tip','tipCurve','dribble','dribbleCurve','shot','shotCurve','shotFake','shotFakeCurve','screen','screenCurve','screenMulti','freehand']
     },
     other: {
       title:'Sonstiges',
-      tools:['cone','ring','disc','bench','mat','crashMat']
+      tools:['cone','ring','disc','ball','bench','mat','crashMat']
     }
   };
 
@@ -6779,6 +7227,7 @@ ${rotateClose}`;
 
   function closeMobilePanels() {
     mobileToolSheet?.classList.remove('open');
+    mobileSettingsSheet?.classList.remove('open');
     mobileProperties?.classList.remove('mobile-open');
     mobileBackdrop?.classList.remove('show');
     document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
@@ -6789,6 +7238,7 @@ ${rotateClose}`;
     if (!group || !mobileToolSheetGrid) return;
 
     mobileProperties?.classList.remove('mobile-open');
+    mobileSettingsSheet?.classList.remove('open');
     mobileToolSheetGrid.innerHTML = '';
 
     const originals = [...document.querySelectorAll('aside .tool')];
@@ -6824,7 +7274,118 @@ ${rotateClose}`;
     }
 
     mobileToolSheet?.classList.remove('open');
+    mobileSettingsSheet?.classList.remove('open');
     mobileProperties?.classList.add('mobile-open');
+    mobileBackdrop?.classList.add('show');
+  }
+
+
+  function copySelectOptions(source, target) {
+    target.innerHTML = '';
+    [...source.options].forEach(opt => {
+      const clone = document.createElement('option');
+      clone.value = opt.value;
+      clone.textContent = opt.textContent;
+      target.appendChild(clone);
+    });
+  }
+
+  function syncMobileSettingsFromHeader() {
+    const pairs = [
+      ['strokeColor','mStrokeColor'],
+      ['strokeWidth','mStrokeWidth'],
+      ['symbolSize','mSymbolSize'],
+      ['courtMode','mCourtMode'],
+      ['courtTheme','mCourtTheme'],
+      ['courtRotation','mCourtRotation'],
+      ['sectorOpacity','mSectorOpacity'],
+      ['layoutGrid','mLayoutGrid'],
+      ['zoomRange','mZoomRange']
+    ];
+
+    pairs.forEach(([sourceId,targetId]) => {
+      const source = document.getElementById(sourceId);
+      const target = document.getElementById(targetId);
+      if (source && target) target.value = source.value;
+    });
+
+    const mGrid = document.getElementById('mGridVisible');
+    if (mGrid) mGrid.checked = gridVisible.checked;
+    const mFreehand = document.getElementById('mFreehandCustomColor');
+    if (mFreehand) mFreehand.value = freehandColor;
+
+    document.getElementById('mSectorOpacityValue').textContent = sectorOpacityValue.textContent;
+    document.getElementById('mZoomValue').textContent = zoomValue.textContent;
+
+    const mActive = document.getElementById('mActiveCellSelect');
+    copySelectOptions(activeCellSelect, mActive);
+    mActive.value = activeCellSelect.value;
+  }
+
+  function proxyInput(sourceId, targetId, eventName='change') {
+    const source = document.getElementById(sourceId);
+    const target = document.getElementById(targetId);
+    if (!source || !target) return;
+
+    target.addEventListener(eventName, () => {
+      if (target.type === 'checkbox') source.checked = target.checked;
+      else source.value = target.value;
+
+      source.dispatchEvent(new Event(eventName, {bubbles:true}));
+      syncMobileSettingsFromHeader();
+    });
+  }
+
+  proxyInput('strokeColor','mStrokeColor','input');
+  proxyInput('strokeWidth','mStrokeWidth','change');
+  proxyInput('symbolSize','mSymbolSize','change');
+  proxyInput('courtMode','mCourtMode','change');
+  proxyInput('courtTheme','mCourtTheme','change');
+  proxyInput('courtRotation','mCourtRotation','change');
+  proxyInput('sectorOpacity','mSectorOpacity','input');
+  proxyInput('gridVisible','mGridVisible','change');
+  proxyInput('layoutGrid','mLayoutGrid','change');
+  proxyInput('activeCellSelect','mActiveCellSelect','change');
+  proxyInput('zoomRange','mZoomRange','input');
+
+  document.querySelectorAll('.mobile-freehand-swatch').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setFreehandColor(btn.dataset.color);
+      const input = document.getElementById('mFreehandCustomColor');
+      if (input) input.value = freehandColor;
+    });
+  });
+
+  document.getElementById('mFreehandCustomColor')?.addEventListener('input', e => {
+    setFreehandColor(e.target.value);
+  });
+
+  document.getElementById('mZoomOutBtn')?.addEventListener('click', () => {
+    zoomOutBtn.click();
+    syncMobileSettingsFromHeader();
+  });
+
+  document.getElementById('mZoomInBtn')?.addEventListener('click', () => {
+    zoomInBtn.click();
+    syncMobileSettingsFromHeader();
+  });
+
+  document.getElementById('mDuplicateCellBtn')?.addEventListener('click', () => {
+    duplicateCellBtn.click();
+    syncMobileSettingsFromHeader();
+  });
+
+  document.getElementById('mJsonSaveBtn')?.addEventListener('click', () => document.getElementById('jsonSaveBtn').click());
+  document.getElementById('mJsonLoadBtn')?.addEventListener('click', () => document.getElementById('jsonLoadBtn').click());
+  document.getElementById('mPngBtn')?.addEventListener('click', () => document.getElementById('pngBtn').click());
+  document.getElementById('mSvgBtn')?.addEventListener('click', () => document.getElementById('svgBtn').click());
+  document.getElementById('mClearBtn')?.addEventListener('click', () => document.getElementById('clearBtn').click());
+
+  function openMobileSettings() {
+    mobileToolSheet?.classList.remove('open');
+    mobileProperties?.classList.remove('mobile-open');
+    syncMobileSettingsFromHeader();
+    mobileSettingsSheet?.classList.add('open');
     mobileBackdrop?.classList.add('show');
   }
 
@@ -6833,7 +7394,13 @@ ${rotateClose}`;
   });
 
   mobileToolSheetClose?.addEventListener('click', closeMobilePanels);
+  mobileSettingsClose?.addEventListener('click', closeMobilePanels);
   mobileBackdrop?.addEventListener('click', closeMobilePanels);
+
+  mobileSettingsBtn?.addEventListener('click', () => {
+    if (mobileSettingsSheet?.classList.contains('open')) closeMobilePanels();
+    else openMobileSettings();
+  });
 
   mobilePropsBtn?.addEventListener('click', () => {
     if (mobileProperties?.classList.contains('mobile-open')) closeMobilePanels();
@@ -6872,6 +7439,7 @@ ${rotateClose}`;
   resizeCanvasForStoryboard();
   applyCanvasZoom();
   updateMarkerSwatches();
+  updateFreehandSwatches();
   draw();
 })();
 </script>

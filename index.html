@@ -567,6 +567,110 @@
   body.ipad-browser header {
     padding-left:148px;
   }
+
+  /* ===== Hilfe / README ===== */
+  #helpBtn {
+    min-width:34px;
+    width:34px;
+    height:32px;
+    padding:3px;
+    font-weight:800;
+    font-size:17px;
+    border-radius:50%;
+  }
+
+  .help-modal {
+    position:fixed;
+    inset:0;
+    z-index:250;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    background:rgba(0,0,0,.45);
+  }
+
+  .help-modal.open {
+    display:flex;
+  }
+
+  .help-dialog {
+    width:min(900px, 94vw);
+    height:min(84vh, 920px);
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    background:#fff;
+    border:1px solid #c9c9c9;
+    border-radius:14px;
+    box-shadow:0 18px 60px rgba(0,0,0,.28);
+  }
+
+  .help-dialog-header {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 14px;
+    border-bottom:1px solid #ddd;
+    background:#f7f7f7;
+  }
+
+  .help-dialog-title {
+    flex:1;
+    font-weight:700;
+    font-size:16px;
+  }
+
+  .help-close-btn {
+    min-width:34px;
+    width:34px;
+    height:32px;
+    padding:2px;
+    font-size:20px;
+    line-height:1;
+  }
+
+  .help-content {
+    flex:1;
+    overflow:auto;
+    padding:20px 24px 32px;
+    -webkit-overflow-scrolling:touch;
+    line-height:1.5;
+    color:#222;
+  }
+
+  .help-content h1 { font-size:26px; margin:0 0 18px; }
+  .help-content h2 { font-size:20px; margin:26px 0 10px; }
+  .help-content h3 { font-size:17px; margin:20px 0 8px; }
+  .help-content p { margin:8px 0; }
+  .help-content ul,
+  .help-content ol { padding-left:24px; }
+  .help-content li { margin:4px 0; }
+  .help-content code {
+    padding:1px 5px;
+    border-radius:4px;
+    background:#f0f0f0;
+  }
+
+  .help-error {
+    padding:16px;
+    border:1px solid #e1b7b7;
+    background:#fff3f3;
+    border-radius:8px;
+  }
+
+  @media (max-width:700px) {
+    .help-modal { padding:8px; }
+    .help-dialog {
+      width:100%;
+      height:calc(100dvh - 16px);
+      border-radius:10px;
+    }
+    .help-content {
+      padding:16px 16px 26px;
+    }
+  }
+
 </style>
 </head>
 <body>
@@ -619,7 +723,7 @@
   <div class="group">
     <label class="small">Linie <input id="strokeColor" type="color" value="#111111"></label>
     <label class="small">Stärke <input id="strokeWidth" type="number" min="1" max="10" step="0.5" value="2.5"></label>
-    <label class="small">Größe <input id="symbolSize" type="number" min="12" max="100" value="34"></label>
+    <label class="small">Größe <input id="symbolSize" type="number" min="12" max="100" value="50"></label>
   </div>
 
   <div class="group">
@@ -696,8 +800,22 @@
     <input id="jsonFile" type="file" accept=".json,application/json" hidden>
   </div>
 
+  <button id="helpBtn" type="button" title="Hilfe / README anzeigen" aria-label="Hilfe anzeigen">?</button>
   <span class="status" id="status">Auswahlmodus</span>
 </header>
+
+<div id="helpModal" class="help-modal" aria-hidden="true">
+  <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
+    <div class="help-dialog-header">
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe</div>
+      <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
+      <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
+    </div>
+    <div id="helpContent" class="help-content">
+      Hilfe wird geladen …
+    </div>
+  </section>
+</div>
 
 <div class="workspace">
 
@@ -1070,7 +1188,7 @@
 
     <div class="prop-row">
       <label>Größe</label>
-      <input id="propSize" type="number" min="12" max="100" value="34">
+      <input id="propSize" type="number" min="12" max="100" value="50">
     </div>
 
     <div class="prop-row">
@@ -1450,6 +1568,70 @@
     };
   }
 
+  function rotatePointAround(x, y, cx, cy, angleDeg) {
+    const a = angleDeg * Math.PI / 180;
+    const dx = x - cx;
+    const dy = y - cy;
+    return {
+      x: cx + dx * Math.cos(a) - dy * Math.sin(a),
+      y: cy + dx * Math.sin(a) + dy * Math.cos(a)
+    };
+  }
+
+  function inverseRotatePointAround(x, y, cx, cy, angleDeg) {
+    return rotatePointAround(x, y, cx, cy, -angleDeg);
+  }
+
+  function rotationForVector(dx, dy) {
+    // Player symbols point "forward" along their local negative Y axis.
+    // Convert a desired world-space vector to the corresponding symbol rotation.
+    return normalizeAngle(Math.atan2(dy, dx) * 180 / Math.PI + 90);
+  }
+
+  function initialPlayerRotation(type, x, y) {
+    const cells = storyboardCells();
+    const cellIndex = cellIndexAtPoint(x, y);
+    const cell = cells[cellIndex] || cells[0];
+    const settings = cellCourts[cellIndex] || courtSettings;
+    if (!cell || !settings || settings.mode === 'none') return 0;
+
+    const r = cellCourtRect(settings.mode, settings.rotation, cell);
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const courtRotation = settings.rotation || 0;
+
+    // Work in the unrotated court coordinate system, then rotate the target
+    // back into world coordinates. This keeps the logic correct for 90/180/270°.
+    const local = inverseRotatePointAround(x, y, cx, cy, courtRotation);
+    let targetLocal = null;
+
+    if (settings.mode === 'half') {
+      if (type === 'attacker' || type === 'attackerBall') {
+        // Point to the goal centre.
+        targetLocal = { x: cx, y: r.y };
+      } else if (type === 'defender' || type === 'goalkeeper') {
+        // Face toward the midfield side of the half court.
+        targetLocal = { x: local.x, y: r.y + r.h };
+      }
+    } else if (settings.mode === 'full') {
+      if (type === 'attacker' || type === 'attackerBall') {
+        // Face the nearest goal.
+        const leftGoal = { x:r.x, y:cy };
+        const rightGoal = { x:r.x+r.w, y:cy };
+        const dl = Math.hypot(local.x-leftGoal.x, local.y-leftGoal.y);
+        const dr = Math.hypot(local.x-rightGoal.x, local.y-rightGoal.y);
+        targetLocal = dl <= dr ? leftGoal : rightGoal;
+      } else if (type === 'defender' || type === 'goalkeeper') {
+        // Face perpendicular toward the midfield line.
+        targetLocal = { x:cx, y:local.y };
+      }
+    }
+
+    if (!targetLocal) return 0;
+    const target = rotatePointAround(targetLocal.x, targetLocal.y, cx, cy, courtRotation);
+    return rotationForVector(target.x - x, target.y - y);
+  }
+
   function resizeCanvasForCourt(remapObjects=true) {
     const target = desiredCanvasSize();
     const oldW = canvas.width;
@@ -1545,6 +1727,10 @@
   let rotating = false;
   let rotateStartAngle = 0;
   let rotateStartValue = 0;
+
+  let rotatingGroup = false;
+  let groupRotateCenter = null;
+  let groupRotateLastAngle = 0;
 
   const pathTools = new Set(['run','complexRun','runMulti','pass','passCurve','passFake','passFakeCurve','runBall','runBallCurve','runBallMulti','tip','tipCurve','dribble','dribbleCurve','shot','shotCurve','shotFake','shotFakeCurve','screen','screenCurve','screenMulti']);
 
@@ -1713,6 +1899,116 @@
     }
   }
 
+  function objectAnchorPoint(o) {
+    if (!o) return null;
+
+    if (o.kind === 'symbol') {
+      return {x:o.x, y:o.y};
+    }
+
+    if (Number.isFinite(+o.x1) && Number.isFinite(+o.y1) &&
+        Number.isFinite(+o.x2) && Number.isFinite(+o.y2)) {
+      return {
+        x:(+o.x1 + +o.x2) / 2,
+        y:(+o.y1 + +o.y2) / 2
+      };
+    }
+
+    return null;
+  }
+
+  function objectBelongsToCell(o, cell) {
+    const p = objectAnchorPoint(o);
+    if (!p || !cell) return false;
+
+    return p.x >= cell.x &&
+           p.x <= cell.x + cell.w &&
+           p.y >= cell.y &&
+           p.y <= cell.y + cell.h;
+  }
+
+  function rotateLabelOffset(o, angleDeg) {
+    if (!o || !Number.isFinite(+o.labelOffsetX) || !Number.isFinite(+o.labelOffsetY)) return;
+
+    const a = angleDeg * Math.PI / 180;
+    const x = +o.labelOffsetX;
+    const y = +o.labelOffsetY;
+
+    o.labelOffsetX = Math.round(x * Math.cos(a) - y * Math.sin(a));
+    o.labelOffsetY = Math.round(x * Math.sin(a) + y * Math.cos(a));
+  }
+
+  function rotateObjectAround(o, cx, cy, angleDeg) {
+    if (!o || !angleDeg) return;
+
+    if (o.kind === 'symbol') {
+      const p = rotatePointAround(o.x, o.y, cx, cy, angleDeg);
+      o.x = p.x;
+      o.y = p.y;
+
+      if (Number.isFinite(+o.rotation)) {
+        o.rotation = normalizeAngle(+o.rotation + angleDeg);
+      }
+
+      rotateLabelOffset(o, angleDeg);
+      return;
+    }
+
+    const start = rotatePointAround(o.x1, o.y1, cx, cy, angleDeg);
+    const end = rotatePointAround(o.x2, o.y2, cx, cy, angleDeg);
+
+    o.x1 = start.x;
+    o.y1 = start.y;
+    o.x2 = end.x;
+    o.y2 = end.y;
+
+    if (Array.isArray(o.points)) {
+      o.points.forEach(pt => {
+        const p = rotatePointAround(pt.x, pt.y, cx, cy, angleDeg);
+        pt.x = p.x;
+        pt.y = p.y;
+      });
+
+      if (isMultiPointPath(o)) {
+        syncMultiPathExtents(o);
+      }
+    }
+
+    if (Number.isFinite(+o.cx1) && Number.isFinite(+o.cy1)) {
+      const p1 = rotatePointAround(o.cx1, o.cy1, cx, cy, angleDeg);
+      o.cx1 = p1.x;
+      o.cy1 = p1.y;
+    }
+
+    if (Number.isFinite(+o.cx2) && Number.isFinite(+o.cy2)) {
+      const p2 = rotatePointAround(o.cx2, o.cy2, cx, cy, angleDeg);
+      o.cx2 = p2.x;
+      o.cy2 = p2.y;
+    }
+
+    rotateLabelOffset(o, angleDeg);
+  }
+
+  function rotateActiveCellObjects(oldRotation, newRotation) {
+    const cells = storyboardCells();
+    const cell = cells[layoutSettings.activeCell];
+    if (!cell) return;
+
+    let delta = (+newRotation || 0) - (+oldRotation || 0);
+    while (delta > 180) delta -= 360;
+    while (delta <= -180) delta += 360;
+    if (!delta) return;
+
+    const cx = cell.x + cell.w / 2;
+    const cy = cell.y + cell.h / 2;
+
+    objects.forEach(o => {
+      if (objectBelongsToCell(o, cell)) {
+        rotateObjectAround(o, cx, cy, delta);
+      }
+    });
+  }
+
   function rectNormalized(r) {
     const x = Math.min(r.x1, r.x2);
     const y = Math.min(r.y1, r.y2);
@@ -1760,6 +2056,36 @@
     return b.x >= rect.x && b.y >= rect.y && b.x2 <= rect.x2 && b.y2 <= rect.y2;
   }
 
+  function selectedGroupBounds() {
+    const items = selectedObjects();
+    if (items.length < 2) return null;
+
+    const bounds = items.map(getObjectBounds).filter(Boolean);
+    if (!bounds.length) return null;
+
+    return {
+      x: Math.min(...bounds.map(b => b.x)),
+      y: Math.min(...bounds.map(b => b.y)),
+      x2: Math.max(...bounds.map(b => b.x2)),
+      y2: Math.max(...bounds.map(b => b.y2))
+    };
+  }
+
+  function getGroupRotationHandle() {
+    const b = selectedGroupBounds();
+    if (!b) return null;
+
+    const cx = (b.x + b.x2) / 2;
+    const cy = (b.y + b.y2) / 2;
+    const handleGap = 42;
+
+    return {
+      center:{x:cx,y:cy},
+      handle:{x:cx,y:b.y-handleGap},
+      top:{x:cx,y:b.y}
+    };
+  }
+
   function commit() {
     history.push(clone(objects));
     if (history.length > 100) history.shift();
@@ -1795,6 +2121,8 @@
     tool = t;
     clearSelection();
     rotating = false;
+    rotatingGroup = false;
+    groupRotateCenter = null;
     draggingEndpoint = null;
 
     document.querySelectorAll('.tool, .tool-group-main, #selectBtn').forEach(b => b.classList.remove('active'));
@@ -1846,6 +2174,131 @@
     btn.addEventListener('click', () => setTool(btn.dataset.tool, btn));
   });
 
+
+  // ===== Hilfe / README =====
+  const helpBtn = document.getElementById('helpBtn');
+  const helpModal = document.getElementById('helpModal');
+  const helpCloseBtn = document.getElementById('helpCloseBtn');
+  const helpOpenReadmeBtn = document.getElementById('helpOpenReadmeBtn');
+  const helpContent = document.getElementById('helpContent');
+  let helpLoaded = false;
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+
+  function renderSimpleMarkdown(markdown) {
+    const lines = String(markdown || '').replace(/\r/g,'').split('\n');
+    let html = '';
+    let inUl = false;
+    let inOl = false;
+
+    const closeLists = () => {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      if (inOl) { html += '</ol>'; inOl = false; }
+    };
+
+    const inline = raw => {
+      let s = escapeHtml(raw);
+      s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+      s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      return s;
+    };
+
+    lines.forEach(line => {
+      const t = line.trim();
+
+      if (!t) {
+        closeLists();
+        return;
+      }
+
+      let m;
+      if ((m = t.match(/^(#{1,3})\s+(.*)$/))) {
+        closeLists();
+        const level = m[1].length;
+        html += `<h${level}>${inline(m[2])}</h${level}>`;
+        return;
+      }
+
+      if ((m = t.match(/^[-*]\s+(.*)$/))) {
+        if (inOl) { html += '</ol>'; inOl = false; }
+        if (!inUl) { html += '<ul>'; inUl = true; }
+        html += `<li>${inline(m[1])}</li>`;
+        return;
+      }
+
+      if ((m = t.match(/^\d+\.\s+(.*)$/))) {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        if (!inOl) { html += '<ol>'; inOl = true; }
+        html += `<li>${inline(m[1])}</li>`;
+        return;
+      }
+
+      closeLists();
+      html += `<p>${inline(t)}</p>`;
+    });
+
+    closeLists();
+    return html;
+  }
+
+  async function loadHelpReadme() {
+    if (helpLoaded) return;
+
+    helpContent.textContent = 'Hilfe wird geladen …';
+
+    try {
+      const response = await fetch('./README.md', {cache:'no-store'});
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const markdown = await response.text();
+      helpContent.innerHTML = renderSimpleMarkdown(markdown);
+      helpLoaded = true;
+    } catch (err) {
+      console.warn('README could not be loaded.', err);
+      helpContent.innerHTML = `
+        <div class="help-error">
+          <strong>README konnte nicht geladen werden.</strong>
+          <p>Prüfe, ob <code>README.md</code> im gleichen GitHub-Pages-Verzeichnis wie <code>index.html</code> liegt.</p>
+        </div>`;
+    }
+  }
+
+  async function openHelp() {
+    helpModal.classList.add('open');
+    helpModal.setAttribute('aria-hidden','false');
+    await loadHelpReadme();
+  }
+
+  function closeHelp() {
+    helpModal.classList.remove('open');
+    helpModal.setAttribute('aria-hidden','true');
+  }
+
+  helpBtn?.addEventListener('click', openHelp);
+  helpCloseBtn?.addEventListener('click', closeHelp);
+
+  helpOpenReadmeBtn?.addEventListener('click', () => {
+    window.open('./README.md', '_blank', 'noopener');
+  });
+
+  helpModal?.addEventListener('click', e => {
+    if (e.target === helpModal) closeHelp();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && helpModal.classList.contains('open')) {
+      closeHelp();
+    }
+  });
+
   document.getElementById('selectBtn').addEventListener('click', () => setTool('select'));
   document.getElementById('undoBtn').addEventListener('click', undo);
   document.getElementById('redoBtn').addEventListener('click', redo);
@@ -1865,8 +2318,14 @@
   });
 
   courtRotation.addEventListener('change', () => {
-    courtSettings.rotation = +courtRotation.value;
+    const oldRotation = +courtSettings.rotation || 0;
+    const newRotation = +courtRotation.value || 0;
+
+    rotateActiveCellObjects(oldRotation, newRotation);
+    courtSettings.rotation = newRotation;
+
     commit();
+    updateProperties();
     draw();
   });
 
@@ -1994,6 +2453,8 @@
     dragging = false;
     draggingEndpoint = null;
     rotating = false;
+    rotatingGroup = false;
+    groupRotateCenter = null;
     groupDragLast = null;
 
     lastMultiPathClickTime = 0;
@@ -2030,10 +2491,27 @@
       }
 
       const handleIndex = rotationHandleHit(p.x, p.y);
+
+      if (handleIndex === -2) {
+        const group = getGroupRotationHandle();
+        if (group) {
+          rotatingGroup = true;
+          rotating = false;
+          groupRotateCenter = group.center;
+          groupRotateLastAngle = Math.atan2(
+            p.y - groupRotateCenter.y,
+            p.x - groupRotateCenter.x
+          );
+          draw();
+          return;
+        }
+      }
+
       if (handleIndex >= 0) {
         setSingleSelection(handleIndex);
         const o = objects[selected];
         rotating = true;
+        rotatingGroup = false;
         rotateStartAngle = Math.atan2(p.y-o.y, p.x-o.x);
         rotateStartValue = o.rotation || 0;
         updateProperties();
@@ -2176,7 +2654,9 @@
       size:+symbolSize.value,
       color:defaultSymbolColor,
       width:+strokeWidth.value,
-      rotation:0
+      rotation:['attacker','attackerBall','defender','goalkeeper'].includes(tool)
+        ? initialPlayerRotation(tool, p.x, p.y)
+        : 0
     };
 
     if (tool === 'attacker' || tool === 'attackerBall') {
@@ -2205,6 +2685,33 @@
 
   canvas.addEventListener('pointermove', e => {
     const p = pos(e);
+
+    if (rotatingGroup && groupRotateCenter && selectedIndices.size > 1) {
+      const currentAngle = Math.atan2(
+        p.y - groupRotateCenter.y,
+        p.x - groupRotateCenter.x
+      );
+
+      let deltaRad = currentAngle - groupRotateLastAngle;
+      while (deltaRad > Math.PI) deltaRad -= Math.PI * 2;
+      while (deltaRad < -Math.PI) deltaRad += Math.PI * 2;
+
+      const deltaDeg = deltaRad * 180 / Math.PI;
+
+      selectedObjects().forEach(o => {
+        rotateObjectAround(
+          o,
+          groupRotateCenter.x,
+          groupRotateCenter.y,
+          deltaDeg
+        );
+      });
+
+      groupRotateLastAngle = currentAngle;
+      updateProperties(false);
+      draw();
+      return;
+    }
 
     if (rotating && selected >= 0) {
       const o = objects[selected];
@@ -2327,6 +2834,15 @@
 
     if (draggingEndpoint) {
       draggingEndpoint = null;
+      commit();
+      updateProperties();
+      draw();
+      return;
+    }
+
+    if (rotatingGroup) {
+      rotatingGroup = false;
+      groupRotateCenter = null;
       commit();
       updateProperties();
       draw();
@@ -2754,13 +3270,21 @@
   }
 
   function rotationHandleHit(x,y) {
-    if (selected < 0 || selectedIndices.size > 1) return -1;
-    const o = objects[selected];
+    if (selected < 0) return -1;
 
+    const radius = window.matchMedia('(max-width: 700px)').matches ? 20 : 11;
+
+    if (selectedIndices.size > 1) {
+      const group = getGroupRotationHandle();
+      if (!group) return -1;
+      return Math.hypot(x-group.handle.x, y-group.handle.y) <= radius ? -2 : -1;
+    }
+
+    const o = objects[selected];
     if (o.kind !== 'symbol' || !rotatableTypes.has(o.type)) return -1;
 
     const h = getRotationHandle(o);
-    return Math.hypot(x-h.x,y-h.y) <= (window.matchMedia('(max-width: 700px)').matches ? 18 : 10) ? selected : -1;
+    return Math.hypot(x-h.x,y-h.y) <= radius ? selected : -1;
   }
 
   function endpointHandleHit(x,y) {
@@ -3602,7 +4126,45 @@
 
     drawStoryboardCourts(ctx);
     objects.forEach((o,i) => drawObject(ctx,o,selectedIndices.has(i)));
+    drawGroupRotationOverlay();
     drawSelectionRectOverlay();
+  }
+
+  function drawGroupRotationOverlay() {
+    if (selectedIndices.size <= 1 || tool !== 'select') return;
+
+    const group = getGroupRotationHandle();
+    const b = selectedGroupBounds();
+    if (!group || !b) return;
+
+    ctx.save();
+
+    ctx.strokeStyle = '#1976d2';
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([6,4]);
+    ctx.strokeRect(b.x, b.y, b.x2-b.x, b.y2-b.y);
+
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(group.top.x, group.top.y);
+    ctx.lineTo(group.handle.x, group.handle.y);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(group.handle.x, group.handle.y, 8, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#1976d2';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+
+    // Small rotation cue inside the handle.
+    ctx.beginPath();
+    ctx.arc(group.handle.x, group.handle.y, 4.2, -Math.PI*.15, Math.PI*1.35);
+    ctx.stroke();
+
+    ctx.restore();
   }
 
   function drawSelection(o) {
@@ -4372,23 +4934,45 @@
     propType.textContent = multi ? `${selectedIndices.size} Objekte` : (typeNames[o.type] || o.type);
 
     const isSymbol = o.kind === 'symbol';
+    const allSymbols = selectedList.length > 0 && selectedList.every(item => item.kind === 'symbol');
+    const allHaveColor = selectedList.length > 0 && selectedList.every(item => typeof item.color === 'string');
+    const allMarkers = allSymbols && selectedList.every(item => markerTypes.has(item.type));
+    const allPaths = selectedList.length > 0 && selectedList.every(item => item.kind === 'path' && pathTools.has(item.type));
+    const allAttackers = allSymbols && selectedList.every(item => item.type === 'attacker' || item.type === 'attackerBall');
+    const allDefenders = allSymbols && selectedList.every(item => item.type === 'defender' || item.type === 'goalkeeper');
+    const allRotatable = allSymbols && selectedList.every(item => rotatableTypes.has(item.type));
 
-    propSize.parentElement.style.display = !multi && isSymbol ? '' : 'none';
-    propColor.parentElement.style.display = multi ? 'none' : '';
+    propSize.parentElement.style.display = allSymbols ? '' : 'none';
+    propColor.parentElement.style.display = allHaveColor ? '' : 'none';
 
     if (syncInputs) {
-      if (isSymbol) propSize.value = Math.round(o.size);
-      propColor.value = o.color || '#111111';
+      if (allSymbols) {
+        const firstSize = Math.round(+selectedList[0].size || 50);
+        const sameSize = selectedList.every(item => Math.round(+item.size || 50) === firstSize);
+        propSize.value = sameSize ? firstSize : '';
+        propSize.placeholder = sameSize ? '' : 'verschieden';
+        propSize.title = sameSize ? '' : 'Verschiedene Größen – Eingabe ändert alle ausgewählten Objekte';
+      } else {
+        propSize.placeholder = '';
+        propSize.title = '';
+      }
+
+      if (allHaveColor) {
+        const firstColor = selectedList[0].color || '#111111';
+        const sameColor = selectedList.every(item => (item.color || '#111111').toLowerCase() === firstColor.toLowerCase());
+        propColor.value = firstColor;
+        propColor.title = sameColor ? '' : 'Verschiedene Farben – Auswahl ändert alle ausgewählten Objekte';
+      }
     }
 
-    const isMarker = !multi && isSymbol && markerTypes.has(o.type);
+    const isMarker = allMarkers;
     markerPropColors.hidden = !isMarker;
 
-    const isPath = !multi && o.kind === 'path' && pathTools.has(o.type);
+    const isPath = allPaths;
     pathPropColors.hidden = !isPath;
 
-    const isAttacker = !multi && isSymbol && (o.type === 'attacker' || o.type === 'attackerBall');
-    const isDefenderColor = !multi && isSymbol && (o.type === 'defender' || o.type === 'goalkeeper');
+    const isAttacker = allAttackers;
+    const isDefenderColor = allDefenders;
 
     attackerPropColors.hidden = !isAttacker;
     defenderPropColors.hidden = !isDefenderColor;
@@ -4429,13 +5013,21 @@
       });
     }
 
-    const canRotate = !multi && isSymbol && rotatableTypes.has(o.type);
+    const canRotate = allRotatable;
     rotationProps.style.display = canRotate ? '' : 'none';
 
     if (canRotate && syncInputs) {
-      const r = normalizeAngle(o.rotation || 0);
-      propRotation.value = r;
-      propRotationRange.value = r;
+      const firstRotation = normalizeAngle(selectedList[0].rotation || 0);
+      const sameRotation = selectedList.every(item =>
+        normalizeAngle(item.rotation || 0) === firstRotation
+      );
+
+      propRotation.value = firstRotation;
+      propRotationRange.value = firstRotation;
+      propRotation.title = sameRotation
+        ? ''
+        : 'Verschiedene Drehungen – Änderung wird auf alle ausgewählten Objekte angewendet';
+      propRotationRange.title = propRotation.title;
     }
 
     const canLabel = multi
@@ -4559,13 +5151,13 @@
     btn.addEventListener('click', () => {
       if (selected < 0) return;
 
-      const o = objects[selected];
-      if (o.kind !== 'symbol' || !markerTypes.has(o.type)) return;
+      const targets = selectedObjects();
+      if (!targets.length || !targets.every(item => item.kind === 'symbol' && markerTypes.has(item.type))) return;
 
-      o.color = btn.dataset.color;
-      propColor.value = o.color;
-      markerColor = o.color;
-      markerCustomColor.value = o.color;
+      targets.forEach(item => { item.color = btn.dataset.color; });
+      propColor.value = btn.dataset.color;
+      markerColor = btn.dataset.color;
+      markerCustomColor.value = btn.dataset.color;
 
       updateMarkerSwatches();
       updateProperties();
@@ -4578,11 +5170,11 @@
     btn.addEventListener('click', () => {
       if (selected < 0) return;
 
-      const o = objects[selected];
-      if (o.kind !== 'path' || !pathTools.has(o.type)) return;
+      const targets = selectedObjects();
+      if (!targets.length || !targets.every(item => item.kind === 'path' && pathTools.has(item.type))) return;
 
-      o.color = btn.dataset.color;
-      propColor.value = o.color;
+      targets.forEach(item => { item.color = btn.dataset.color; });
+      propColor.value = btn.dataset.color;
 
       updateProperties();
       commit();
@@ -4594,11 +5186,13 @@
     btn.addEventListener('click', () => {
       if (selected < 0) return;
 
-      const o = objects[selected];
-      if (o.kind !== 'symbol' || o.type !== 'attacker') return;
+      const targets = selectedObjects();
+      if (!targets.length || !targets.every(item =>
+        item.kind === 'symbol' && (item.type === 'attacker' || item.type === 'attackerBall')
+      )) return;
 
-      o.color = btn.dataset.color;
-      propColor.value = o.color;
+      targets.forEach(item => { item.color = btn.dataset.color; });
+      propColor.value = btn.dataset.color;
 
       updateProperties();
       commit();
@@ -4610,11 +5204,13 @@
     btn.addEventListener('click', () => {
       if (selected < 0) return;
 
-      const o = objects[selected];
-      if (o.kind !== 'symbol' || !['defender','goalkeeper'].includes(o.type)) return;
+      const targets = selectedObjects();
+      if (!targets.length || !targets.every(item =>
+        item.kind === 'symbol' && ['defender','goalkeeper'].includes(item.type)
+      )) return;
 
-      o.color = btn.dataset.color;
-      propColor.value = o.color;
+      targets.forEach(item => { item.color = btn.dataset.color; });
+      propColor.value = btn.dataset.color;
 
       updateProperties();
       commit();
@@ -4622,85 +5218,126 @@
     });
   });
 
-  function propertyChanged(commitNow=true) {
+  function propertyChanged(commitNow=true, changedProperty=null) {
     if (selected < 0) return;
 
-    const o=objects[selected];
+    const targets = selectedObjects();
+    if (!targets.length) return;
 
-    if (o.kind === 'symbol') {
-      o.size = Math.max(12,Math.min(100,+propSize.value || 34));
+    if (changedProperty === null || changedProperty === 'size') {
+      if (propSize.value !== '') {
+        const newSize = Math.max(12, Math.min(100, +propSize.value || 50));
+        targets
+          .filter(item => item.kind === 'symbol')
+          .forEach(item => { item.size = newSize; });
+      }
     }
 
-    o.color = propColor.value;
+    if (changedProperty === null || changedProperty === 'color') {
+      targets
+        .filter(item => typeof item.color === 'string')
+        .forEach(item => { item.color = propColor.value; });
+    }
 
-    if (o.kind === 'symbol' && rotatableTypes.has(o.type)) {
-      o.rotation = normalizeAngle(+propRotation.value || 0);
-      propRotationRange.value = o.rotation;
+    if (changedProperty === null || changedProperty === 'rotation') {
+      const rotatableTargets = targets.filter(item =>
+        item.kind === 'symbol' && rotatableTypes.has(item.type)
+      );
+
+      if (rotatableTargets.length === targets.length && rotatableTargets.length) {
+        const rotation = normalizeAngle(+propRotation.value || 0);
+        rotatableTargets.forEach(item => { item.rotation = rotation; });
+        propRotationRange.value = rotation;
+      }
     }
 
     draw();
     if (commitNow) commit();
   }
 
-  propSize.addEventListener('change', () => propertyChanged(true));
+  propSize.addEventListener('change', () => {
+    propertyChanged(true, 'size');
+    updateProperties();
+  });
+
   propColor.addEventListener('change', () => {
     if (selected >= 0) {
-      const o = objects[selected];
+      const targets = selectedObjects();
 
-      if (o.kind === 'symbol' && markerTypes.has(o.type)) {
+      if (targets.length && targets.every(item => item.kind === 'symbol' && markerTypes.has(item.type))) {
         markerColor = propColor.value;
         markerCustomColor.value = propColor.value;
         updateMarkerSwatches();
       }
     }
 
-    propertyChanged(true);
+    propertyChanged(true, 'color');
     updateProperties();
   });
 
   propRotation.addEventListener('input', () => {
     if (selected < 0) return;
-    const o = objects[selected];
 
-    if (o.kind === 'symbol' && rotatableTypes.has(o.type)) {
-      o.rotation = normalizeAngle(+propRotation.value || 0);
-      propRotationRange.value = o.rotation;
-      draw();
-    }
+    const targets = selectedObjects();
+    if (!targets.length || !targets.every(item =>
+      item.kind === 'symbol' && rotatableTypes.has(item.type)
+    )) return;
+
+    const rotation = normalizeAngle(+propRotation.value || 0);
+    targets.forEach(item => { item.rotation = rotation; });
+    propRotationRange.value = rotation;
+    draw();
   });
 
   propRotation.addEventListener('change', () => {
     if (selected < 0) return;
-    const o=objects[selected];
-    o.rotation = normalizeAngle(+propRotation.value || 0);
-    propRotation.value = o.rotation;
-    propRotationRange.value = o.rotation;
+
+    const targets = selectedObjects();
+    if (!targets.length || !targets.every(item =>
+      item.kind === 'symbol' && rotatableTypes.has(item.type)
+    )) return;
+
+    const rotation = normalizeAngle(+propRotation.value || 0);
+    targets.forEach(item => { item.rotation = rotation; });
+    propRotation.value = rotation;
+    propRotationRange.value = rotation;
     commit();
+    updateProperties();
     draw();
   });
 
   propRotationRange.addEventListener('input', () => {
     if (selected < 0) return;
-    const o = objects[selected];
 
-    if (o.kind === 'symbol' && rotatableTypes.has(o.type)) {
-      o.rotation = +propRotationRange.value;
-      propRotation.value = o.rotation;
-      draw();
-    }
+    const targets = selectedObjects();
+    if (!targets.length || !targets.every(item =>
+      item.kind === 'symbol' && rotatableTypes.has(item.type)
+    )) return;
+
+    const rotation = +propRotationRange.value;
+    targets.forEach(item => { item.rotation = rotation; });
+    propRotation.value = rotation;
+    draw();
   });
 
-  propRotationRange.addEventListener('change', commit);
+  propRotationRange.addEventListener('change', () => {
+    commit();
+    updateProperties();
+  });
 
   function rotateSelected(delta, absolute=null) {
     if (selected < 0) return;
-    const o=objects[selected];
 
-    if (o.kind !== 'symbol' || !rotatableTypes.has(o.type)) return;
+    const targets = selectedObjects();
+    if (!targets.length || !targets.every(item =>
+      item.kind === 'symbol' && rotatableTypes.has(item.type)
+    )) return;
 
-    o.rotation = absolute === null
-      ? normalizeAngle((o.rotation || 0) + delta)
-      : normalizeAngle(absolute);
+    targets.forEach(item => {
+      item.rotation = absolute === null
+        ? normalizeAngle((item.rotation || 0) + delta)
+        : normalizeAngle(absolute);
+    });
 
     commit();
     updateProperties();
@@ -5481,7 +6118,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 61,
+      version: 67,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -5664,21 +6301,29 @@ ${rotateClose}`;
   }
 
   async function saveBlobForUser(blob,name) {
-    // In iPad Safari browser mode, using the native share sheet is more
-    // reliable than <a download>. It exposes "Save to Files" and, for
-    // supported image types, image-saving destinations supplied by iPadOS.
-    // In installed/standalone mode we preserve the existing direct-download
-    // behaviour, which already works well on the user's iPad.
+    // iPad Safari browser mode:
+    // - PNG can be handed to the native share sheet and saved as an image.
+    // - SVG/JSON are handed over explicitly as files; choose "In Dateien sichern".
+    // Installed/standalone mode keeps the existing direct-download behaviour.
     if (isIPadLike() && !isStandaloneMode() && navigator.share) {
       try {
+        const ext = (name.split('.').pop() || '').toLowerCase();
+        const isFileOnly = ext === 'svg' || ext === 'json';
+
         const file = new File([blob], name, {
           type: blob.type || 'application/octet-stream'
         });
 
-        const shareData = { files:[file], title:name };
+        const shareData = {
+          files:[file],
+          title: isFileOnly ? `Datei speichern: ${name}` : name
+        };
+
         if (!navigator.canShare || navigator.canShare(shareData)) {
           await navigator.share(shareData);
-          status.textContent = `${name} zum Speichern bereit`;
+          status.textContent = isFileOnly
+            ? `${name}: „In Dateien sichern“ wählen`
+            : `${name} zum Speichern bereit`;
           return;
         }
       } catch (err) {
@@ -6076,7 +6721,7 @@ ${rotateClose}`;
   canvas.addEventListener('pointerup', () => {
     if (!mobileLayoutActive()) return;
     setTimeout(() => {
-      if (tool === 'select' && selectedIndices.size > 0 && !dragging && !draggingEndpoint && !rotating) {
+      if (tool === 'select' && selectedIndices.size > 0 && !dragging && !draggingEndpoint && !rotating && !rotatingGroup) {
         mobileProperties?.classList.add('mobile-open');
         mobileBackdrop?.classList.add('show');
       }

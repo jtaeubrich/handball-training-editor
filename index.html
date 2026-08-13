@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Handball-Skizzeneditor</title>
 <style>
   :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -525,17 +525,66 @@
       height:150px;
     }
   }
+
+  /* ===== iPad Safari browser mode =====
+     Keep the three essential editing controls visible even when Safari's
+     browser chrome reduces the available viewport. Standalone/PWA mode
+     intentionally keeps the existing layout unchanged. */
+  body.ipad-browser .mobile-topbar {
+    display:flex !important;
+    position:fixed;
+    z-index:80;
+    top:max(8px, env(safe-area-inset-top));
+    left:max(8px, env(safe-area-inset-left));
+    right:auto;
+    width:auto;
+    height:46px;
+    padding:4px 6px;
+    border:1px solid #cfcfcf;
+    border-radius:12px;
+    background:rgba(255,255,255,.96);
+    box-shadow:0 3px 14px rgba(0,0,0,.16);
+    align-items:center;
+    gap:5px;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+
+  body.ipad-browser .mobile-topbar button {
+    width:38px;
+    min-width:38px;
+    height:36px;
+    padding:3px;
+    border-radius:9px;
+    font-size:18px;
+  }
+
+  body.ipad-browser .mobile-topbar .mobile-title,
+  body.ipad-browser .mobile-topbar #mobilePropsBtn {
+    display:none !important;
+  }
+
+  body.ipad-browser header {
+    padding-left:148px;
+  }
 </style>
-
-  <meta name="theme-color" content="#ffffff">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Handballtrainer">
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
-
 </head>
 <body>
+<script>
+  (function () {
+    const iPadLike =
+      /iPad/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    const standalone =
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+
+    if (iPadLike && !standalone) {
+      document.body.classList.add('ipad-browser');
+    }
+  })();
+</script>
 <div class="mobile-topbar mobile-only">
   <button id="mobileUndoBtn" title="Rückgängig">↶</button>
   <button id="mobileRedoBtn" title="Wiederholen">↷</button>
@@ -5410,7 +5459,7 @@ ${rotateClose}`;
   ${content}
 </svg>`;
 
-    downloadBlob(
+    saveBlobForUser(
       new Blob([svg],{type:'image/svg+xml'}),
       'handball-skizze.svg'
     );
@@ -5422,8 +5471,8 @@ ${rotateClose}`;
     clearSelection();
     draw();
 
-    canvas.toBlob(blob => {
-      downloadBlob(blob,'handball-skizze.png');
+    canvas.toBlob(async blob => {
+      if (blob) await saveBlobForUser(blob,'handball-skizze.png');
       selected = tmpSel;
       selectedIndices = tmpSelectedIndices;
       draw();
@@ -5432,7 +5481,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 60,
+      version: 61,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -5482,10 +5531,9 @@ ${rotateClose}`;
       }
     }
 
-    // Fallback for Firefox/Safari or environments without showSaveFilePicker.
-    // The exact folder/dialog behavior is controlled by the browser settings.
-    downloadBlob(blob, fileName);
-    status.textContent = 'Projekt als Download gespeichert';
+    // Safari/iPad and other fallback environments.
+    await saveBlobForUser(blob, fileName);
+    status.textContent = 'Projekt gespeichert';
   }
 
   function loadProject(file) {
@@ -5591,15 +5639,62 @@ ${rotateClose}`;
     reader.readAsText(file);
   }
 
-  function downloadBlob(blob,name) {
+  function isStandaloneMode() {
+    return !!(
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function isIPadLike() {
+    return /iPad/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function directDownloadBlob(blob,name) {
     const a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
+    const url=URL.createObjectURL(blob);
+    a.href=url;
     a.download=name;
+    a.rel='noopener';
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => URL.revokeObjectURL(url),3000);
+  }
 
-    setTimeout(() => URL.revokeObjectURL(a.href),1500);
+  async function saveBlobForUser(blob,name) {
+    // In iPad Safari browser mode, using the native share sheet is more
+    // reliable than <a download>. It exposes "Save to Files" and, for
+    // supported image types, image-saving destinations supplied by iPadOS.
+    // In installed/standalone mode we preserve the existing direct-download
+    // behaviour, which already works well on the user's iPad.
+    if (isIPadLike() && !isStandaloneMode() && navigator.share) {
+      try {
+        const file = new File([blob], name, {
+          type: blob.type || 'application/octet-stream'
+        });
+
+        const shareData = { files:[file], title:name };
+        if (!navigator.canShare || navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          status.textContent = `${name} zum Speichern bereit`;
+          return;
+        }
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          status.textContent = 'Speichern abgebrochen';
+          return;
+        }
+        console.warn('iPad share/save failed, using download fallback.', err);
+      }
+    }
+
+    directDownloadBlob(blob,name);
+  }
+
+  function downloadBlob(blob,name) {
+    return saveBlobForUser(blob,name);
   }
 
   document.getElementById('svgBtn').addEventListener('click', exportSvg);
@@ -6003,17 +6098,6 @@ ${rotateClose}`;
   draw();
 })();
 </script>
-
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js').catch(err => {
-        console.warn('Service worker registration failed:', err);
-      });
-    });
-  }
-</script>
-
 </body>
 </html>
   canvas.addEventListener('dblclick', e => {

@@ -865,7 +865,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen</span>
+    <span>Einstellungen · v79</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1071,7 +1071,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v79</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -6979,7 +6979,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 78,
+      version: 79,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -7718,6 +7718,44 @@ ${rotateClose}`;
   updateFreehandSwatches();
   draw();
 })();
+
+  // ===== PWA / Service Worker v79 =====
+  // The installed Home-Screen app must not keep running an older cached editor.
+  // Always check the service worker script from the network and reload once
+  // when a newer worker takes control.
+  if ('serviceWorker' in navigator) {
+    let swControllerReloaded = false;
+
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (swControllerReloaded) return;
+      swControllerReloaded = true;
+
+      const reloadKey = 'handballtrainer-sw-v79-reload';
+      if (sessionStorage.getItem(reloadKey) !== '1') {
+        sessionStorage.setItem(reloadKey, '1');
+        window.location.reload();
+      }
+    });
+
+    window.addEventListener('load', async () => {
+      try {
+        const registration = await navigator.serviceWorker.register(
+          './service-worker.js',
+          {
+            scope:'./',
+            updateViaCache:'none'
+          }
+        );
+
+        // Explicitly check for an update at every app start.
+        await registration.update();
+        console.info('[Handballtrainer] Service Worker v79 registration OK');
+      } catch (err) {
+        console.warn('[Handballtrainer] Service Worker registration failed:', err);
+      }
+    });
+  }
+
 </script>
 </body>
 </html>

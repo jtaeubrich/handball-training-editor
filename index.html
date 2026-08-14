@@ -434,6 +434,25 @@
 
   .mobile-settings-actions button { min-height:44px; }
 
+  .mobile-settings-grid .mobile-freehand-swatch {
+    width:30px !important;
+    min-width:30px !important;
+    height:30px !important;
+    min-height:30px !important;
+    padding:0 !important;
+    border-radius:50% !important;
+    flex:0 0 30px;
+  }
+
+  .mobile-settings-grid #mFreehandCustomColor {
+    width:42px !important;
+    min-width:42px !important;
+    height:42px !important;
+    min-height:42px !important;
+    padding:2px !important;
+    flex:0 0 42px;
+  }
+
   @media (max-width:430px) {
     .mobile-title { display:none; }
     .mobile-settings-grid { grid-template-columns:1fr; }
@@ -647,6 +666,23 @@
     border-radius:50%;
   }
 
+  .support-header-btn {
+    min-width:34px;
+    width:34px;
+    height:32px;
+    padding:3px;
+    border-radius:50%;
+    color:#9b2536;
+    border-color:#d6a3aa;
+    background:#fff7f8;
+    font-weight:800;
+    font-size:16px;
+  }
+
+  .support-header-btn:hover {
+    background:#ffecef;
+  }
+
   .help-modal {
     position:fixed;
     inset:0;
@@ -727,7 +763,49 @@
     border-radius:8px;
   }
 
+  .help-support {
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 14px;
+    border-top:1px solid #ddd;
+    background:#fafafa;
+  }
+
+  .help-support-text {
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    flex:1;
+    min-width:0;
+  }
+
+  .help-support-text strong {
+    font-size:13px;
+  }
+
+  .help-support-text span {
+    font-size:12px;
+    color:#666;
+  }
+
+  .support-demo-btn {
+    flex:0 0 auto;
+    min-height:34px;
+    padding:6px 12px;
+    border-color:#d6a3aa;
+    background:#fff7f8;
+    color:#9b2536;
+    font-weight:700;
+  }
+
+  .support-demo-btn:hover {
+    background:#ffecef;
+  }
+
   @media (max-width:700px) {
+    .support-header-btn { display:none !important; }
+
     .help-modal { padding:8px; }
     .help-dialog {
       width:100%;
@@ -736,6 +814,20 @@
     }
     .help-content {
       padding:16px 16px 26px;
+    }
+
+    .help-support {
+      padding:9px 10px;
+      gap:8px;
+    }
+
+    .help-support-text span {
+      display:none;
+    }
+
+    .support-demo-btn {
+      min-height:40px;
+      padding:7px 11px;
     }
   }
 
@@ -967,6 +1059,8 @@
     <input id="jsonFile" type="file" accept=".json,application/json" hidden>
   </div>
 
+  <button id="supportHeaderBtn" class="support-header-btn" type="button"
+          title="Mit Ko-fi unterstützen" aria-label="Projekt mit Ko-fi unterstützen">♥</button>
   <button id="helpBtn" type="button" title="Hilfe / README anzeigen" aria-label="Hilfe anzeigen">?</button>
   <span class="status" id="status">Auswahlmodus</span>
 </header>
@@ -980,6 +1074,17 @@
     </div>
     <div id="helpContent" class="help-content">
       Hilfe wird geladen …
+    </div>
+
+    <div class="help-support">
+      <div class="help-support-text">
+        <strong>Gefällt dir der Skizzeneditor?</strong>
+        <span>Unterstütze die Weiterentwicklung freiwillig.</span>
+      </div>
+      <button id="supportDemoBtn" class="support-demo-btn" type="button"
+              title="Mit Ko-fi unterstützen">
+        ♥ Unterstützen
+      </button>
     </div>
   </section>
 </div>
@@ -1082,6 +1187,22 @@
       </svg>
     </span>
     Trainer / Übungsleiter
+  </button>
+
+  <button class="tool" data-tool="ball">
+    <span class="ico">
+      <svg viewBox="-20 -20 40 40" aria-hidden="true">
+        <circle cx="0" cy="0" r="13" fill="#fff" stroke="#222" stroke-width="1.7"/>
+        <polygon points="0,-5.4 5.1,-1.7 3.2,4.4 -3.2,4.4 -5.1,-1.7"
+                 fill="#222"/>
+        <path d="M0,-5.4 L-4.4,-10.8 M5.1,-1.7 L11,-4.2 M3.2,4.4 L7.7,9.7 M-3.2,4.4 L-7.8,9.6 M-5.1,-1.7 L-11,-4.3"
+              fill="none" stroke="#222" stroke-width="1.4"/>
+        <path d="M-4.4,-10.8 L3.8,-11.7 L11,-4.2 L11.1,4.3 L7.7,9.7
+                 M-4.4,-10.8 L-11,-4.3 L-11.1,4.2 L-7.8,9.6"
+              fill="none" stroke="#777" stroke-width="1"/>
+      </svg>
+    </span>
+    Ball
   </button>
 
   <h3>Wege / Aktionen</h3>
@@ -1315,22 +1436,6 @@
       <button class="tool" data-tool="disc">
         <span class="ico"><svg viewBox="-22 -16 44 32"><ellipse cx="0" cy="0" rx="15" ry="8" fill="#f2c500" stroke="#a88a00" stroke-width="1.5"/></svg></span>
         Markierung
-      </button>
-
-      <button class="tool" data-tool="ball">
-        <span class="ico">
-          <svg viewBox="-20 -20 40 40" aria-hidden="true">
-            <circle cx="0" cy="0" r="13" fill="#fff" stroke="#222" stroke-width="1.7"/>
-            <polygon points="0,-5.4 5.1,-1.7 3.2,4.4 -3.2,4.4 -5.1,-1.7"
-                     fill="#222"/>
-            <path d="M0,-5.4 L-4.4,-10.8 M5.1,-1.7 L11,-4.2 M3.2,4.4 L7.7,9.7 M-3.2,4.4 L-7.8,9.6 M-5.1,-1.7 L-11,-4.3"
-                  fill="none" stroke="#222" stroke-width="1.4"/>
-            <path d="M-4.4,-10.8 L3.8,-11.7 L11,-4.2 L11.1,4.3 L7.7,9.7
-                     M-4.4,-10.8 L-11,-4.3 L-11.1,4.2 L-7.8,9.6"
-                  fill="none" stroke="#777" stroke-width="1"/>
-          </svg>
-        </span>
-        Ball
       </button>
 
       <button class="tool" data-tool="bench">
@@ -2376,7 +2481,7 @@
     if (t === 'defender' || t === 'goalkeeper') {
       defenseGroupSelection = t;
     }
-    if (['cone','ring','disc','ball','bench','mat','crashMat'].includes(t)) {
+    if (['cone','ring','disc','bench','mat','crashMat'].includes(t)) {
       otherGroupSelection = t;
     }
 
@@ -2394,7 +2499,7 @@
     if (t === 'defender' || t === 'goalkeeper') {
       defenseGroupBtn?.classList.add('active');
     }
-    if (['cone','ring','disc','ball','bench','mat','crashMat'].includes(t)) {
+    if (['cone','ring','disc','bench','mat','crashMat'].includes(t)) {
       otherGroupBtn?.classList.add('active');
     }
     if (typeof pathVariantToGroup !== 'undefined' && pathVariantToGroup[t]) {
@@ -2534,6 +2639,14 @@
   helpOpenReadmeBtn?.addEventListener('click', () => {
     window.open('./README.md', '_blank', 'noopener');
   });
+
+  function supportDemoAction() {
+    window.open('https://ko-fi.com/jantaeubrich', '_blank', 'noopener');
+    status.textContent = 'Ko-fi-Link geöffnet';
+  }
+
+  document.getElementById('supportDemoBtn')?.addEventListener('click', supportDemoAction);
+  document.getElementById('supportHeaderBtn')?.addEventListener('click', supportDemoAction);
 
   helpModal?.addEventListener('click', e => {
     if (e.target === helpModal) closeHelp();
@@ -6695,7 +6808,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 73,
+      version: 77,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -7201,7 +7314,7 @@ ${rotateClose}`;
   const mobileGroups = {
     players: {
       title:'Spieler / Trainer',
-      tools:['attacker','attackerBall','feeder','defender','goalkeeper','coach']
+      tools:['attacker','attackerBall','feeder','defender','goalkeeper','coach','ball']
     },
     paths: {
       title:'Wege / Aktionen',
@@ -7209,7 +7322,7 @@ ${rotateClose}`;
     },
     other: {
       title:'Sonstiges',
-      tools:['cone','ring','disc','ball','bench','mat','crashMat']
+      tools:['cone','ring','disc','bench','mat','crashMat']
     }
   };
 
@@ -7416,16 +7529,8 @@ ${rotateClose}`;
   mobileUndoBtn?.addEventListener('click', undo);
   mobileRedoBtn?.addEventListener('click', redo);
 
-  // On smartphone, selecting an object opens its properties as a bottom sheet.
-  canvas.addEventListener('pointerup', () => {
-    if (!mobileLayoutActive()) return;
-    setTimeout(() => {
-      if (tool === 'select' && selectedIndices.size > 0 && !dragging && !draggingEndpoint && !rotating && !rotatingGroup) {
-        mobileProperties?.classList.add('mobile-open');
-        mobileBackdrop?.classList.add('show');
-      }
-    }, 0);
-  });
+  // On smartphone, object selection stays on the canvas.
+  // Properties open only when the user explicitly taps the burger button.
 
   mobileMedia.addEventListener?.('change', () => {
     closeMobilePanels();

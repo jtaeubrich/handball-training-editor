@@ -171,6 +171,9 @@
     max-width:none;
     max-height:none;
     touch-action:none;
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
   }
 
   aside {
@@ -2833,19 +2836,29 @@
   }
 
 
-  // ===== Touch gestures: two-finger pinch zoom + pan =====
+  // ===== Robust touch input for iPhone / iPad =====
+  // One finger uses the normal desktop pointer logic.
+  // Two fingers switch to custom pinch-to-zoom + pan.
+  //
+  // Important for iOS:
+  // The old implementation cloned the complete undo/redo history for EVERY
+  // first touch. On larger sketches this became very expensive on mobile Safari.
+  // We now keep only one lightweight interaction checkpoint and shallow copies
+  // of the history arrays. Pointer state is also cleaned up aggressively after
+  // cancel/lost events so Safari cannot leave the editor in a blocked state.
+
   const canvasScroller = canvas.closest('main');
-  const touchGesturePointers = new Map();
+  const touchPointers = new Map();
 
   let touchGestureActive = false;
   let touchGestureSuppressEditor = false;
   let touchGestureStartDistance = 0;
   let touchGestureStartZoom = 1;
   let touchGestureAnchorCanvas = null;
-  let touchGestureSnapshot = null;
+  let touchGestureCheckpoint = null;
 
-  function touchGestureMidpoint() {
-    const pts = Array.from(touchGesturePointers.values());
+  function touchMidpoint() {
+    const pts = Array.from(touchPointers.values());
     if (pts.length < 2) return null;
     return {
       x:(pts[0].x + pts[1].x) / 2,
@@ -2853,32 +2866,41 @@
     };
   }
 
-  function touchGestureDistance() {
-    const pts = Array.from(touchGesturePointers.values());
+  function touchDistance() {
+    const pts = Array.from(touchPointers.values());
     if (pts.length < 2) return 0;
-    return Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+    return Math.hypot(
+      pts[1].x - pts[0].x,
+      pts[1].y - pts[0].y
+    );
   }
 
-  function captureTouchGestureSnapshot() {
+  function captureTouchCheckpoint() {
+    // Only the current object state is deep-cloned.
+    // History / redo contain immutable snapshots and can therefore be copied
+    // shallowly. This avoids repeatedly cloning up to 100 full drawings.
     return {
       objects:clone(objects),
-      history:clone(history),
-      redoStack:clone(redoStack),
+      history:history.slice(),
+      redoStack:redoStack.slice(),
       selected,
       selectedIndices:Array.from(selectedIndices),
       drawing:drawing ? clone(drawing) : null
     };
   }
 
-  function restoreTouchGestureSnapshot() {
-    if (!touchGestureSnapshot) return;
+  function restoreTouchCheckpoint() {
+    if (!touchGestureCheckpoint) return;
 
-    objects = clone(touchGestureSnapshot.objects);
-    history = clone(touchGestureSnapshot.history);
-    redoStack = clone(touchGestureSnapshot.redoStack);
-    selected = touchGestureSnapshot.selected;
-    selectedIndices = new Set(touchGestureSnapshot.selectedIndices);
-    drawing = touchGestureSnapshot.drawing ? clone(touchGestureSnapshot.drawing) : null;
+    objects = clone(touchGestureCheckpoint.objects);
+    history = touchGestureCheckpoint.history.slice();
+    redoStack = touchGestureCheckpoint.redoStack.slice();
+
+    selected = touchGestureCheckpoint.selected;
+    selectedIndices = new Set(touchGestureCheckpoint.selectedIndices);
+    drawing = touchGestureCheckpoint.drawing
+      ? clone(touchGestureCheckpoint.drawing)
+      : null;
 
     dragging = false;
     draggingEndpoint = null;
@@ -2892,12 +2914,26 @@
     draw();
   }
 
-  function beginTouchGesture() {
-    const midpoint = touchGestureMidpoint();
-    const distance = touchGestureDistance();
+  function safeCaptureTouchPointer(pointerId) {
+    try {
+      if (!canvas.hasPointerCapture(pointerId)) {
+        canvas.setPointerCapture(pointerId);
+      }
+    } catch (_) {
+      // Safari may reject capture during edge/cancel transitions.
+      // Window-level cleanup below still prevents stale pointer state.
+    }
+  }
+
+  function beginTwoFingerGesture() {
+    const midpoint = touchMidpoint();
+    const distance = touchDistance();
     if (!midpoint || !distance) return;
 
-    restoreTouchGestureSnapshot();
+    // The first finger has intentionally been allowed to behave exactly like
+    // desktop input. If a second finger appears, revert that partial action and
+    // turn the interaction into a pure viewport gesture.
+    restoreTouchCheckpoint();
 
     touchGestureActive = true;
     touchGestureSuppressEditor = true;
@@ -2910,29 +2946,37 @@
       y:(midpoint.y - r.top) * canvas.height / r.height
     };
 
-    for (const pointerId of touchGesturePointers.keys()) {
-      try {
-        if (canvas.hasPointerCapture(pointerId)) {
-          canvas.releasePointerCapture(pointerId);
-        }
-      } catch (_) {}
+    // Keep BOTH pointers captured by the canvas. The previous implementation
+    // released capture here; on iOS that could cause pointerup/cancel to be lost
+    // when a finger moved outside the canvas and leave the editor blocked.
+    for (const pointerId of touchPointers.keys()) {
+      safeCaptureTouchPointer(pointerId);
     }
 
     status.textContent = 'Zwei-Finger-Zoom / Verschieben';
   }
 
-  function updateTouchGesture() {
-    if (!touchGestureActive || touchGesturePointers.size < 2 || !canvasScroller) return;
+  function updateTwoFingerGesture() {
+    if (!touchGestureActive ||
+        touchPointers.size < 2 ||
+        !canvasScroller ||
+        !touchGestureAnchorCanvas) return;
 
-    const midpoint = touchGestureMidpoint();
-    const distance = touchGestureDistance();
-    if (!midpoint || !distance || !touchGestureAnchorCanvas) return;
+    const midpoint = touchMidpoint();
+    const distance = touchDistance();
+    if (!midpoint || !distance) return;
 
     const ratio = distance / touchGestureStartDistance;
-    const targetZoom = Math.max(0.25, Math.min(2, touchGestureStartZoom * ratio));
+    const targetZoom = Math.max(
+      0.25,
+      Math.min(2, touchGestureStartZoom * ratio)
+    );
 
     setCanvasZoom(targetZoom * 100);
 
+    // Keep the canvas coordinate below the initial two-finger midpoint below
+    // the CURRENT midpoint. This gives pinch zoom and two-finger panning in one
+    // gesture without changing any object coordinates.
     const r = canvas.getBoundingClientRect();
     const anchorClientX =
       r.left + touchGestureAnchorCanvas.x * r.width / canvas.width;
@@ -2943,54 +2987,58 @@
     canvasScroller.scrollTop  += anchorClientY - midpoint.y;
   }
 
-  canvas.addEventListener('pointerdown', e => {
+  function resetTouchGestureState(forceEditorCleanup=false) {
+    touchPointers.clear();
+    touchGestureActive = false;
+    touchGestureSuppressEditor = false;
+    touchGestureStartDistance = 0;
+    touchGestureAnchorCanvas = null;
+    touchGestureCheckpoint = null;
+
+    if (forceEditorCleanup) {
+      dragging = false;
+      draggingEndpoint = null;
+      rotating = false;
+      rotatingGroup = false;
+      groupRotateCenter = null;
+      groupDragLast = null;
+      selectionRect = null;
+
+      // A normal single-point path/freehand interaction that was interrupted by
+      // Safari must not stay half-open and block future taps.
+      if (drawing && !isMultiPointPath(drawing)) {
+        drawing = null;
+      }
+
+      updateProperties();
+      draw();
+    }
+
+    status.textContent = tool === 'select'
+      ? 'Auswahlmodus'
+      : 'Werkzeug: ' + (typeNames[tool] || tool);
+  }
+
+  function finishTouchPointer(e) {
     if (e.pointerType !== 'touch') return;
 
-    if (touchGesturePointers.size === 0) {
-      touchGestureSnapshot = captureTouchGestureSnapshot();
-    }
+    const wasGesture =
+      touchGestureActive || touchGestureSuppressEditor;
 
-    touchGesturePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    touchPointers.delete(e.pointerId);
 
-    if (touchGesturePointers.size === 2) {
-      beginTouchGesture();
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    } else if (touchGestureSuppressEditor) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    }
-  }, {capture:true});
-
-  canvas.addEventListener('pointermove', e => {
-    if (e.pointerType !== 'touch' || !touchGesturePointers.has(e.pointerId)) return;
-
-    touchGesturePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
-
-    if (touchGestureActive) {
-      updateTouchGesture();
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    } else if (touchGestureSuppressEditor) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    }
-  }, {capture:true});
-
-  function finishTouchGesturePointer(e) {
-    if (e.pointerType !== 'touch') return;
-
-    const wasGesture = touchGestureActive || touchGestureSuppressEditor;
-    touchGesturePointers.delete(e.pointerId);
-
-    if (touchGestureActive && touchGesturePointers.size < 2) {
+    if (touchGestureActive && touchPointers.size < 2) {
       touchGestureActive = false;
       touchGestureAnchorCanvas = null;
     }
 
-    if (touchGesturePointers.size === 0) {
+    // After a two-finger gesture the remaining finger is intentionally ignored
+    // until it is lifted. This prevents it from suddenly placing/moving an
+    // object when the user finishes the gesture.
+    if (touchPointers.size === 0) {
       touchGestureSuppressEditor = false;
-      touchGestureSnapshot = null;
+      touchGestureCheckpoint = null;
+
       status.textContent = tool === 'select'
         ? 'Auswahlmodus'
         : 'Werkzeug: ' + (typeNames[tool] || tool);
@@ -3002,8 +3050,109 @@
     }
   }
 
-  canvas.addEventListener('pointerup', finishTouchGesturePointer, {capture:true});
-  canvas.addEventListener('pointercancel', finishTouchGesturePointer, {capture:true});
+  canvas.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'touch') return;
+
+    // If Safari ever left a stale touch behind, starting a brand-new physical
+    // interaction must recover automatically instead of blocking the editor.
+    if (!e.isPrimary && touchPointers.size === 0) {
+      resetTouchGestureState(false);
+    }
+
+    if (touchPointers.size === 0) {
+      touchGestureCheckpoint = captureTouchCheckpoint();
+    }
+
+    touchPointers.set(e.pointerId, {
+      x:e.clientX,
+      y:e.clientY
+    });
+
+    safeCaptureTouchPointer(e.pointerId);
+
+    if (touchPointers.size >= 2) {
+      if (!touchGestureActive) beginTwoFingerGesture();
+
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    } else if (touchGestureSuppressEditor) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, {capture:true, passive:false});
+
+  canvas.addEventListener('pointermove', e => {
+    if (e.pointerType !== 'touch' ||
+        !touchPointers.has(e.pointerId)) return;
+
+    touchPointers.set(e.pointerId, {
+      x:e.clientX,
+      y:e.clientY
+    });
+
+    if (touchGestureActive) {
+      updateTwoFingerGesture();
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    } else if (touchGestureSuppressEditor) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+  }, {capture:true, passive:false});
+
+  canvas.addEventListener(
+    'pointerup',
+    finishTouchPointer,
+    {capture:true, passive:false}
+  );
+
+  canvas.addEventListener(
+    'pointercancel',
+    finishTouchPointer,
+    {capture:true, passive:false}
+  );
+
+  // Safari-specific legacy gesture events can otherwise compete with the
+  // custom pointer-based pinch handler.
+  ['gesturestart','gesturechange','gestureend'].forEach(type => {
+    canvas.addEventListener(type, e => {
+      e.preventDefault();
+    }, {passive:false});
+  });
+
+  // Last-resort cleanup. If iOS cancels/captures a pointer in an unusual order,
+  // never keep a stale pointer map around for the next interaction.
+  window.addEventListener('pointerup', e => {
+    if (e.pointerType !== 'touch') return;
+    if (touchPointers.has(e.pointerId)) {
+      touchPointers.delete(e.pointerId);
+    }
+    if (touchPointers.size === 0 && !touchGestureActive) {
+      touchGestureSuppressEditor = false;
+      touchGestureCheckpoint = null;
+    }
+  });
+
+  window.addEventListener('pointercancel', e => {
+    if (e.pointerType !== 'touch') return;
+    touchPointers.delete(e.pointerId);
+
+    if (touchPointers.size === 0) {
+      resetTouchGestureState(true);
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && touchPointers.size) {
+      resetTouchGestureState(true);
+    }
+  });
+
+  window.addEventListener('blur', () => {
+    if (touchPointers.size) {
+      resetTouchGestureState(true);
+    }
+  });
 
 
   canvas.addEventListener('pointerdown', e => {
@@ -3457,6 +3606,28 @@
       commit();
       updateProperties();
     }
+  });
+
+  canvas.addEventListener('pointercancel', e => {
+    if (e.pointerType === 'touch' && touchGestureSuppressEditor) return;
+
+    selectionRect = null;
+    draggingEndpoint = null;
+    rotating = false;
+    rotatingGroup = false;
+    groupRotateCenter = null;
+    dragging = false;
+    groupDragLast = null;
+
+    // Do not leave an interrupted freehand or ordinary path active.
+    // Multi-point paths are intentionally preserved because they are built
+    // through separate taps and can be continued after an interruption.
+    if (drawing && !isMultiPointPath(drawing)) {
+      drawing = null;
+    }
+
+    updateProperties();
+    draw();
   });
 
   window.addEventListener('keydown', e => {
@@ -6808,7 +6979,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 77,
+      version: 78,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {

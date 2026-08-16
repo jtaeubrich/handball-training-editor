@@ -542,6 +542,67 @@
 
 
   .tool-group { position:relative; margin:4px 0; }
+
+  /* v80 – persönliche Werkzeugreihenfolge */
+  .sortable-tool-item {
+    position:relative;
+  }
+
+  .sortable-tool-item > .tool-group-main,
+  button.sortable-tool-item {
+    padding-left:28px;
+  }
+
+  .tool-sort-handle {
+    position:absolute;
+    z-index:8;
+    left:3px;
+    top:50%;
+    transform:translateY(-50%);
+    width:20px;
+    height:28px;
+    display:grid;
+    place-items:center;
+    border:0;
+    background:transparent;
+    color:#777;
+    font-size:14px;
+    line-height:1;
+    cursor:grab;
+    user-select:none;
+    -webkit-user-select:none;
+    touch-action:none;
+    opacity:.55;
+  }
+
+  .tool-sort-handle:hover {
+    opacity:1;
+    color:#222;
+  }
+
+  .tool-sort-handle:active {
+    cursor:grabbing;
+  }
+
+  .sortable-tool-item.tool-sort-dragging {
+    opacity:.38;
+  }
+
+  .sortable-tool-item.tool-sort-before {
+    box-shadow:0 -3px 0 #1976d2;
+  }
+
+  .sortable-tool-item.tool-sort-after {
+    box-shadow:0 3px 0 #1976d2;
+  }
+
+  @media (max-width:700px) {
+    /* The original left toolbar is hidden on smartphones, so the handles are
+       intentionally not shown inside the mobile clone menus. */
+    .tool-sort-handle {
+      display:none !important;
+    }
+  }
   .tool-group-main {
     width:100%; display:flex; align-items:center; gap:8px;
     text-align:left; padding:7px 8px;
@@ -865,7 +926,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v79</span>
+    <span>Einstellungen · v80</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1071,7 +1132,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v79</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v80</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -6979,7 +7040,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 79,
+      version: 80,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -7464,6 +7525,282 @@ ${rotateClose}`;
     draw();
   }
 
+
+  // ===== Personal tool order (v80) =====
+  const TOOL_ORDER_STORAGE_KEY = 'handballtrainer.toolOrder.v80';
+
+  const toolOrderMobileMap = {
+    players: {
+      'group:attack':['attacker','attackerBall'],
+      'tool:feeder':['feeder'],
+      'group:defense':['defender','goalkeeper'],
+      'tool:coach':['coach'],
+      'tool:ball':['ball']
+    },
+    paths: {
+      'path:run':['run','complexRun','runMulti'],
+      'path:pass':['pass','passCurve'],
+      'path:screen':['screen','screenCurve','screenMulti'],
+      'path:passFake':['passFake','passFakeCurve'],
+      'path:runBall':['runBall','runBallCurve','runBallMulti'],
+      'path:tip':['tip','tipCurve'],
+      'path:dribble':['dribble','dribbleCurve'],
+      'path:shot':['shot','shotCurve'],
+      'path:shotFake':['shotFake','shotFakeCurve'],
+      'tool:freehand':['freehand']
+    },
+    other: {
+      'group:other':['cone','ring','disc','bench','mat','crashMat']
+    }
+  };
+
+  function sortableToolId(el) {
+    if (!el) return null;
+    if (el.matches('.path-tool-group[data-path-group]')) {
+      return 'path:' + el.dataset.pathGroup;
+    }
+    if (el.matches('.tool-group[data-tool-group]')) {
+      return 'group:' + el.dataset.toolGroup;
+    }
+    if (el.matches(':scope.tool[data-tool]')) {
+      return 'tool:' + el.dataset.tool;
+    }
+    return null;
+  }
+
+  function isTopLevelSortableTool(el) {
+    if (!el || el.parentElement !== document.querySelector('aside')) return false;
+    return !!sortableToolId(el);
+  }
+
+  function toolSectionDefinitions() {
+    const aside = document.querySelector('aside');
+    if (!aside) return [];
+
+    const headings = [...aside.children].filter(el => el.tagName === 'H3');
+    const wanted = [
+      ['players','Spieler / Trainer'],
+      ['paths','Wege / Aktionen'],
+      ['other','Sonstiges']
+    ];
+
+    return wanted.map(([key,title]) => {
+      const heading = headings.find(h => h.textContent.trim() === title);
+      if (!heading) return null;
+
+      const items = [];
+      let anchor = null;
+      let n = heading.nextElementSibling;
+
+      while (n) {
+        if (n.tagName === 'H3') {
+          anchor = n;
+          break;
+        }
+
+        if (isTopLevelSortableTool(n)) {
+          items.push(n);
+        } else if (items.length) {
+          // Color panels / help stay fixed after the sortable buttons.
+          anchor = n;
+          break;
+        }
+
+        n = n.nextElementSibling;
+      }
+
+      return {key, heading, items, anchor};
+    }).filter(Boolean);
+  }
+
+  function currentToolOrder() {
+    const result = {};
+    toolSectionDefinitions().forEach(section => {
+      result[section.key] = section.items
+        .map(sortableToolId)
+        .filter(Boolean);
+    });
+    return result;
+  }
+
+  function loadStoredToolOrder() {
+    try {
+      const raw = localStorage.getItem(TOOL_ORDER_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch (err) {
+      console.warn('[Handballtrainer] Werkzeugreihenfolge konnte nicht geladen werden:', err);
+      return null;
+    }
+  }
+
+  function saveToolOrder() {
+    try {
+      localStorage.setItem(
+        TOOL_ORDER_STORAGE_KEY,
+        JSON.stringify(currentToolOrder())
+      );
+    } catch (err) {
+      console.warn('[Handballtrainer] Werkzeugreihenfolge konnte nicht gespeichert werden:', err);
+    }
+  }
+
+  function applyStoredToolOrder() {
+    const stored = loadStoredToolOrder();
+    if (!stored) return;
+
+    toolSectionDefinitions().forEach(section => {
+      const byId = new Map(
+        section.items.map(item => [sortableToolId(item), item])
+      );
+
+      const requested = Array.isArray(stored[section.key])
+        ? stored[section.key]
+        : [];
+
+      const ordered = [];
+      requested.forEach(id => {
+        const item = byId.get(id);
+        if (item && !ordered.includes(item)) ordered.push(item);
+      });
+
+      // Newly introduced tools that are not in an older preference remain
+      // available and are appended in their default order.
+      section.items.forEach(item => {
+        if (!ordered.includes(item)) ordered.push(item);
+      });
+
+      ordered.forEach(item => {
+        if (section.anchor) section.anchor.before(item);
+        else section.heading.parentElement.appendChild(item);
+      });
+    });
+  }
+
+  function clearToolSortIndicators() {
+    document.querySelectorAll(
+      '.sortable-tool-item.tool-sort-before, .sortable-tool-item.tool-sort-after'
+    ).forEach(el => {
+      el.classList.remove('tool-sort-before','tool-sort-after');
+    });
+  }
+
+  let draggedToolItem = null;
+  let draggedToolCategory = null;
+
+  function installToolSorting() {
+    toolSectionDefinitions().forEach(section => {
+      section.items.forEach(item => {
+        item.classList.add('sortable-tool-item');
+        item.dataset.sortCategory = section.key;
+        item.dataset.sortId = sortableToolId(item);
+
+        let handle = item.querySelector(':scope > .tool-sort-handle');
+        if (!handle) {
+          handle = document.createElement('span');
+          handle.className = 'tool-sort-handle';
+          handle.textContent = '⋮⋮';
+          handle.title = 'Innerhalb dieser Kategorie verschieben';
+          handle.setAttribute('aria-label','Werkzeug verschieben');
+          handle.draggable = true;
+
+          if (item.tagName === 'BUTTON') {
+            item.prepend(handle);
+          } else {
+            item.prepend(handle);
+          }
+        }
+
+        handle.addEventListener('click', e => {
+          // A click on the grip must not select a drawing tool.
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        handle.addEventListener('dragstart', e => {
+          draggedToolItem = item;
+          draggedToolCategory = section.key;
+          item.classList.add('tool-sort-dragging');
+          closeDesktopToolDropdowns();
+
+          e.dataTransfer.effectAllowed = 'move';
+          try {
+            e.dataTransfer.setData('text/plain', item.dataset.sortId || '');
+          } catch (_) {}
+        });
+
+        handle.addEventListener('dragend', () => {
+          item.classList.remove('tool-sort-dragging');
+          clearToolSortIndicators();
+
+          if (draggedToolItem) {
+            saveToolOrder();
+          }
+
+          draggedToolItem = null;
+          draggedToolCategory = null;
+        });
+
+        item.addEventListener('dragover', e => {
+          if (!draggedToolItem ||
+              draggedToolItem === item ||
+              item.dataset.sortCategory !== draggedToolCategory) return;
+
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+
+          clearToolSortIndicators();
+
+          const rect = item.getBoundingClientRect();
+          const after = e.clientY > rect.top + rect.height / 2;
+          item.classList.add(after ? 'tool-sort-after' : 'tool-sort-before');
+        });
+
+        item.addEventListener('drop', e => {
+          if (!draggedToolItem ||
+              draggedToolItem === item ||
+              item.dataset.sortCategory !== draggedToolCategory) return;
+
+          e.preventDefault();
+
+          const rect = item.getBoundingClientRect();
+          const after = e.clientY > rect.top + rect.height / 2;
+
+          if (after) item.after(draggedToolItem);
+          else item.before(draggedToolItem);
+
+          clearToolSortIndicators();
+          saveToolOrder();
+        });
+      });
+    });
+  }
+
+  function orderedMobileTools(groupName, fallbackTools) {
+    const map = toolOrderMobileMap[groupName];
+    if (!map) return fallbackTools.slice();
+
+    const order = currentToolOrder()[groupName] || [];
+    const result = [];
+
+    order.forEach(id => {
+      (map[id] || []).forEach(toolName => {
+        if (!result.includes(toolName)) result.push(toolName);
+      });
+    });
+
+    fallbackTools.forEach(toolName => {
+      if (!result.includes(toolName)) result.push(toolName);
+    });
+
+    return result;
+  }
+
+  // Apply the preference before installing the drag handles.
+  applyStoredToolOrder();
+  installToolSorting();
+
   // ===== Smartphone controls =====
   const mobileMedia = window.matchMedia('(max-width: 700px)');
   const mobileProperties = document.querySelector('.properties');
@@ -7526,7 +7863,8 @@ ${rotateClose}`;
     mobileToolSheetGrid.innerHTML = '';
 
     const originals = [...document.querySelectorAll('aside .tool')];
-    group.tools.forEach(toolName => {
+    const orderedTools = orderedMobileTools(name, group.tools);
+    orderedTools.forEach(toolName => {
       const original = originals.find(el => el.dataset.tool === toolName);
       if (!original) return;
 

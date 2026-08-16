@@ -272,6 +272,10 @@
     text-overflow:ellipsis;
   }
 
+  .mobile-delete-selection-btn {
+    display:none;
+  }
+
   .properties {
     position:fixed;
     z-index:42;
@@ -294,6 +298,21 @@
 
   .properties.mobile-open {
     transform:translateY(0);
+  }
+
+  .mobile-delete-selection-btn {
+    display:block;
+    width:100%;
+    min-height:42px;
+    margin:0 0 10px;
+    color:#9b2536;
+    background:#fff7f8;
+    border-color:#d6a3aa;
+    font-weight:700;
+  }
+
+  .mobile-delete-selection-btn:disabled {
+    opacity:.42;
   }
 
   .properties::before {
@@ -926,7 +945,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v80</span>
+    <span>Einstellungen · v81</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1132,7 +1151,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v80</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v81</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1552,6 +1571,14 @@
 
 <section class="properties">
   <h3>Eigenschaften</h3>
+
+  <button id="mobileDeleteSelectionBtn"
+          class="mobile-delete-selection-btn"
+          type="button"
+          disabled>
+    🗑 Auswahl löschen
+  </button>
+
   <div id="emptyProps" class="empty-props">
     Wähle ein Objekt aus, um seine Eigenschaften zu bearbeiten.
   </div>
@@ -2571,6 +2598,12 @@
     }
 
     status.textContent = t === 'select' ? 'Auswahlmodus' : 'Werkzeug: ' + (typeNames[t] || t);
+
+    const mobileSelectStateBtn = document.getElementById('mobileSelectBtn');
+    if (mobileSelectStateBtn) {
+      mobileSelectStateBtn.classList.toggle('active', t === 'select');
+    }
+
     canvas.style.cursor = t === 'select'
       ? 'default'
       : ((pathTools.has(t) || t === 'freehand') ? 'crosshair' : 'copy');
@@ -5786,6 +5819,11 @@
   }
 
   function updateProperties(syncInputs=true) {
+    const mobileDeleteButton = document.getElementById('mobileDeleteSelectionBtn');
+    if (mobileDeleteButton) {
+      mobileDeleteButton.disabled = selectedIndices.size === 0;
+    }
+
     if (selected < 0 || !objects[selected] || selectedIndices.size === 0) {
       emptyProps.hidden = false;
       propPanel.hidden = true;
@@ -7040,7 +7078,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 80,
+      version: 81,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -7811,6 +7849,7 @@ ${rotateClose}`;
   const mobileBackdrop = document.getElementById('mobileBackdrop');
   const mobileHint = document.getElementById('mobileHint');
   const mobilePropsBtn = document.getElementById('mobilePropsBtn');
+  const mobileDeleteSelectionBtn = document.getElementById('mobileDeleteSelectionBtn');
   const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
   const mobileSettingsSheet = document.getElementById('mobileSettingsSheet');
   const mobileSettingsClose = document.getElementById('mobileSettingsClose');
@@ -7844,6 +7883,11 @@ ${rotateClose}`;
     mobileHint.classList.add('show');
     clearTimeout(mobileHintTimer);
     mobileHintTimer = setTimeout(() => mobileHint.classList.remove('show'), 950);
+  }
+
+  function updateMobileDeleteSelectionState() {
+    if (!mobileDeleteSelectionBtn) return;
+    mobileDeleteSelectionBtn.disabled = selectedIndices.size === 0;
   }
 
   function closeMobilePanels() {
@@ -7897,6 +7941,7 @@ ${rotateClose}`;
 
     mobileToolSheet?.classList.remove('open');
     mobileSettingsSheet?.classList.remove('open');
+    updateMobileDeleteSelectionState();
     mobileProperties?.classList.add('mobile-open');
     mobileBackdrop?.classList.add('show');
   }
@@ -8029,6 +8074,20 @@ ${rotateClose}`;
     else openMobileProperties();
   });
 
+  mobileDeleteSelectionBtn?.addEventListener('click', () => {
+    if (!selectedIndices.size) return;
+
+    const count = selectedIndices.size;
+    deleteSelected();
+    updateMobileDeleteSelectionState();
+
+    showMobileHint(
+      count > 1
+        ? `${count} Objekte gelöscht`
+        : 'Objekt gelöscht'
+    );
+  });
+
   mobileSelectBtn?.addEventListener('click', () => {
     setTool('select');
     closeMobilePanels();
@@ -8037,6 +8096,9 @@ ${rotateClose}`;
 
   mobileUndoBtn?.addEventListener('click', undo);
   mobileRedoBtn?.addEventListener('click', redo);
+
+  mobileSelectBtn?.classList.toggle('active', tool === 'select');
+  updateMobileDeleteSelectionState();
 
   // On smartphone, object selection stays on the canvas.
   // Properties open only when the user explicitly taps the burger button.

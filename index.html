@@ -254,6 +254,8 @@
     padding:4px 9px;
     border-radius:10px;
     font-size:18px;
+    touch-action:manipulation;
+    -webkit-tap-highlight-color:transparent;
   }
 
   .mobile-topbar button.active {
@@ -278,7 +280,7 @@
 
   .properties {
     position:fixed;
-    z-index:42;
+    z-index:60;
     left:0;
     right:0;
     bottom:76px;
@@ -293,11 +295,17 @@
     background:#fff;
     overflow:auto;
     transform:translateY(calc(100% + 90px));
-    transition:transform .22s ease;
+    transition:transform .22s ease, visibility 0s linear .22s;
+    visibility:hidden;
+    pointer-events:none;
+    -webkit-overflow-scrolling:touch;
   }
 
   .properties.mobile-open {
     transform:translateY(0);
+    visibility:visible;
+    pointer-events:auto;
+    transition:transform .22s ease;
   }
 
   .mobile-delete-selection-btn {
@@ -945,7 +953,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v81</span>
+    <span>Einstellungen · v84</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1151,7 +1159,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v81</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v84</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1521,6 +1529,34 @@
         Markierung
       </button>
 
+
+      <button class="tool" data-tool="airbody">
+        <span class="ico">
+          <svg viewBox="0 0 64 160" width="20" height="28" aria-hidden="true">
+            <path d="M31 6
+                     C26 6 22 9 22 14
+                     C22 18 24 21 27 23
+                     L25 28
+                     C17 30 12 37 11 47
+                     L11 56
+                     C11 67 9 84 10 106
+                     C11 129 15 143 22 152
+                     L42 152
+                     C49 143 53 129 54 106
+                     C55 84 53 67 53 56
+                     L53 47
+                     C52 37 47 30 39 28
+                     L37 23
+                     C40 21 42 18 42 14
+                     C42 9 38 6 33 6
+                     Z"
+                  fill="currentColor" stroke="#1f1f1f" stroke-width="2"
+                  stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+        </span>
+        Air Body
+      </button>
+
       <button class="tool" data-tool="bench">
         <span class="ico"><svg viewBox="0 0 56 28"><rect x="5" y="9" width="46" height="10" rx="2" fill="#b8874f" stroke="#6f4a28" stroke-width="2"/></svg></span>
         Turnbank
@@ -1539,7 +1575,7 @@
   </div>
 
   <div id="markerColorPanel" class="marker-colors" hidden>
-    <div class="title">Farbe für Hütchen / Reifen / Markierung</div>
+    <div class="title">Farbe für Hütchen / Reifen / Markierung / Air Body</div>
     <div class="color-swatches">
       <button class="color-swatch marker-swatch" data-color="#f2c500" style="background:#f2c500" title="Gelb" aria-label="Gelb"></button>
       <button class="color-swatch marker-swatch" data-color="#d32f2f" style="background:#d32f2f" title="Rot" aria-label="Rot"></button>
@@ -2110,7 +2146,7 @@
   const attackerPropColors = document.getElementById('attackerPropColors');
   const defenderPropColors = document.getElementById('defenderPropColors');
 
-  const markerTypes = new Set(['cone','ring','disc']);
+  const markerTypes = new Set(['cone','ring','disc','airbody']);
   let markerColor = '#f2c500';
   let freehandColor = '#111111';
 
@@ -2176,7 +2212,7 @@
     return map[t] || t;
   }
 
-  const rotatableTypes = new Set(['attacker','attackerBall','defender','goalkeeper','bench','mat','crashMat']);
+  const rotatableTypes = new Set(['attacker','attackerBall','defender','goalkeeper','airbody','bench','mat','crashMat']);
   const labelTypes = new Set(['attacker','attackerBall','defender']);
   const pathLabelLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -2224,7 +2260,8 @@
     freehand: 'Freihandzeichnung',
     bench: 'Turnbank',
     mat: 'Sportmatte',
-    crashMat: 'Weichbodenmatte'
+    crashMat: 'Weichbodenmatte',
+    airbody: 'Air Body'
   };
 
   function clone(v) {
@@ -2469,6 +2506,9 @@
       } else if (o.type === 'crashMat') {
         rx = o.size * 1.08;
         ry = o.size * 0.70;
+      } else if (o.type === 'airbody') {
+        rx = o.size * 0.30;
+        ry = o.size * 0.72;
       }
 
       // Conservative world-space bounds for rotated equipment.
@@ -2572,7 +2612,7 @@
     if (t === 'defender' || t === 'goalkeeper') {
       defenseGroupSelection = t;
     }
-    if (['cone','ring','disc','bench','mat','crashMat'].includes(t)) {
+    if (['cone','ring','disc','airbody','bench','mat','crashMat'].includes(t)) {
       otherGroupSelection = t;
     }
 
@@ -2590,7 +2630,7 @@
     if (t === 'defender' || t === 'goalkeeper') {
       defenseGroupBtn?.classList.add('active');
     }
-    if (['cone','ring','disc','bench','mat','crashMat'].includes(t)) {
+    if (['cone','ring','disc','airbody','bench','mat','crashMat'].includes(t)) {
       otherGroupBtn?.classList.add('active');
     }
     if (typeof pathVariantToGroup !== 'undefined' && pathVariantToGroup[t]) {
@@ -3444,7 +3484,9 @@
       y:p.y,
       size:tool === 'ball'
         ? Math.max(24, Math.round(+symbolSize.value * 0.68))
-        : +symbolSize.value,
+        : (tool === 'airbody'
+          ? Math.max(32, Math.round(+symbolSize.value * 0.72))
+          : +symbolSize.value),
       color:defaultSymbolColor,
       width:+strokeWidth.value,
       rotation:['attacker','attackerBall','defender','goalkeeper'].includes(tool)
@@ -3798,6 +3840,8 @@
           if (Math.abs(lx) <= o.size*.825 && Math.abs(ly) <= o.size*.46) return i;
         } else if (o.type === 'crashMat') {
           if (Math.abs(lx) <= o.size*1.025 && Math.abs(ly) <= o.size*.64) return i;
+        } else if (o.type === 'airbody') {
+          if (Math.abs(lx) <= o.size*.30 && ly >= -o.size*.72 && ly <= o.size*.72) return i;
         } else if (Math.hypot(lx,ly) < o.size*0.8) {
           return i;
         }
@@ -5014,12 +5058,14 @@
     ctx.setLineDash([4,3]);
 
     if (o.kind === 'symbol') {
-      if (o.type === 'bench' || o.type === 'mat' || o.type === 'crashMat') {
+      if (o.type === 'bench' || o.type === 'mat' || o.type === 'crashMat' || o.type === 'airbody') {
         const dims = o.type === 'bench'
           ? {w:o.size*2.36, h:o.size*.60}
           : (o.type === 'mat'
             ? {w:o.size*1.76, h:o.size*1.04}
-            : {w:o.size*2.16, h:o.size*1.40});
+            : (o.type === 'crashMat'
+              ? {w:o.size*2.16, h:o.size*1.40}
+              : {w:o.size*.66, h:o.size*1.50}));
 
         ctx.save();
         ctx.translate(o.x,o.y);
@@ -5508,6 +5554,37 @@
         c.ellipse(0,0,s*.48,s*.24,0,0,Math.PI*2);
         c.fill();
         c.stroke();
+      }
+
+      else if (o.type === 'airbody') {
+        c.save();
+        c.fillStyle = o.color;
+        c.strokeStyle = '#1f1f1f';
+        c.lineWidth = Math.max(1.4, o.width);
+
+        const h = s * 1.38;
+        const w = s * 0.56;
+
+        c.beginPath();
+        c.moveTo(-w*.08, -h*.72);
+        c.bezierCurveTo(-w*.20, -h*.72, -w*.28, -h*.62, -w*.28, -h*.52);
+        c.bezierCurveTo(-w*.28, -h*.43, -w*.23, -h*.35, -w*.15, -h*.31);
+        c.lineTo(-w*.18, -h*.22);
+        c.bezierCurveTo(-w*.42, -h*.19, -w*.54, -h*.03, -w*.54, h*.16);
+        c.lineTo(-w*.52, h*.36);
+        c.bezierCurveTo(-w*.50, h*.62, -w*.42, h*.80, -w*.28, h*.98);
+        c.lineTo(w*.28, h*.98);
+        c.bezierCurveTo(w*.42, h*.80, w*.50, h*.62, w*.52, h*.36);
+        c.lineTo(w*.54, h*.16);
+        c.bezierCurveTo(w*.54, -h*.03, w*.42, -h*.19, w*.18, -h*.22);
+        c.lineTo(w*.15, -h*.31);
+        c.bezierCurveTo(w*.23, -h*.35, w*.28, -h*.43, w*.28, -h*.52);
+        c.bezierCurveTo(w*.28, -h*.62, w*.20, -h*.72, w*.08, -h*.72);
+        c.bezierCurveTo(w*.03, -h*.75, -w*.03, -h*.75, -w*.08, -h*.72);
+        c.closePath();
+        c.fill();
+        c.stroke();
+        c.restore();
       }
 
       else if (o.type === 'bench') {
@@ -6624,6 +6701,29 @@ ${close}`;
 ${close}`;
       }
 
+      if (o.type === 'airbody') {
+        const h=s*1.38, w=s*.56;
+        return `${open}
+  <path d="M ${-w*.08} ${-h*.72}
+           C ${-w*.20} ${-h*.72}, ${-w*.28} ${-h*.62}, ${-w*.28} ${-h*.52}
+           C ${-w*.28} ${-h*.43}, ${-w*.23} ${-h*.35}, ${-w*.15} ${-h*.31}
+           L ${-w*.18} ${-h*.22}
+           C ${-w*.42} ${-h*.19}, ${-w*.54} ${-h*.03}, ${-w*.54} ${h*.16}
+           L ${-w*.52} ${h*.36}
+           C ${-w*.50} ${h*.62}, ${-w*.42} ${h*.80}, ${-w*.28} ${h*.98}
+           L ${w*.28} ${h*.98}
+           C ${w*.42} ${h*.80}, ${w*.50} ${h*.62}, ${w*.52} ${h*.36}
+           L ${w*.54} ${h*.16}
+           C ${w*.54} ${-h*.03}, ${w*.42} ${-h*.19}, ${w*.18} ${-h*.22}
+           L ${w*.15} ${-h*.31}
+           C ${w*.23} ${-h*.35}, ${w*.28} ${-h*.43}, ${w*.28} ${-h*.52}
+           C ${w*.28} ${-h*.62}, ${w*.20} ${-h*.72}, ${w*.08} ${-h*.72}
+           C ${w*.03} ${-h*.75}, ${-w*.03} ${-h*.75}, ${-w*.08} ${-h*.72} Z"
+        fill="${col}" stroke="#1f1f1f" stroke-width="${Math.max(1.4,sw)}"
+        stroke-linejoin="round" stroke-linecap="round"/>
+${close}`;
+      }
+
       if (o.type === 'bench') {
         const w=s*2.25, h=s*.48;
         return `${open}
@@ -7078,7 +7178,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 81,
+      version: 84,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -7588,7 +7688,7 @@ ${rotateClose}`;
       'tool:freehand':['freehand']
     },
     other: {
-      'group:other':['cone','ring','disc','bench','mat','crashMat']
+      'group:other':['cone','ring','disc','airbody','bench','mat','crashMat']
     }
   };
 
@@ -7869,7 +7969,7 @@ ${rotateClose}`;
     },
     other: {
       title:'Sonstiges',
-      tools:['cone','ring','disc','bench','mat','crashMat']
+      tools:['cone','ring','disc','airbody','bench','mat','crashMat']
     }
   };
 
@@ -7895,6 +7995,7 @@ ${rotateClose}`;
     mobileSettingsSheet?.classList.remove('open');
     mobileProperties?.classList.remove('mobile-open');
     mobileBackdrop?.classList.remove('show');
+    mobilePropsBtn?.classList.remove('active');
     document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
   }
 
@@ -7934,16 +8035,17 @@ ${rotateClose}`;
   }
 
   function openMobileProperties() {
-    if (selectedIndices.size === 0) {
-      showMobileHint('Zuerst ein Objekt auswählen');
-      return;
-    }
-
     mobileToolSheet?.classList.remove('open');
     mobileSettingsSheet?.classList.remove('open');
+
+    // Always open the burger menu. With no selection the existing
+    // empty-properties view is shown instead of silently doing nothing.
+    updateProperties();
     updateMobileDeleteSelectionState();
+
     mobileProperties?.classList.add('mobile-open');
     mobileBackdrop?.classList.add('show');
+    mobilePropsBtn?.classList.add('active');
   }
 
 
@@ -8167,5 +8269,4 @@ ${rotateClose}`;
       e.stopPropagation();
     }
   });
-
 

@@ -170,12 +170,23 @@ SVG bleibt als Vektorgrafik editierbar und eignet sich für weitere Bearbeitung 
 Für die Veröffentlichung werden typischerweise diese Dateien im Repository verwendet:
 
 - `index.html`
+- `js/` (Projektdateien, Export, Geometrie, Zustand, Auswahl und Rendering)
 - `manifest.webmanifest`
 - `service-worker.js`
 - `icons/`
 - `.nojekyll`
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
+
+## Entwicklung und Regressionstests (v90)
+
+Das objektbezogene Canvas-Rendering liegt in `js/renderer-canvas.js`, das SVG-Rendering einschließlich Spielfeld in `js/renderer-svg.js`. Beide Renderer erhalten ihre benötigten Geometrie- und Beschriftungsfunktionen ausdrücklich vom Editor. Auswahlrahmen, Handles und Bedienlogik bleiben in `index.html`.
+
+Tests ausführen: `npm ci`, `npx playwright install chromium`, danach `npm run test:e2e`. Der Testserver benötigt nur Node.js. GitHub Actions verwendet dieselben Abhängigkeiten aus `package-lock.json`; überholte Testläufe derselben Branch werden durch die bestehende concurrency-Regel abgebrochen.
+
+Die Renderingtests vergleichen Canvas-Zeichenbefehle und SVG-Ausgaben mit dem Stand v89 (Commit `49627eac1f8e32a7af7eb032919c7a37c1653051`). Die Referenzfälle decken alle Symbole und Pfadvarianten, Beschriftungen, Pfade ohne Länge sowie SVG-Spielfelder ab. Formatierungs-Einrückungen und numerische Unterschiede jenseits von acht Nachkommastellen werden beim Vergleich ignoriert.
+
+Referenzwerte nur bei beabsichtigten Änderungen erneuern: Testserver mit `node tests/server.cjs` starten, dann in einem zweiten Terminal `node tests/capture-rendering-baseline.cjs` ausführen. Das Skript liest ausdrücklich den ursprünglichen v89-Commit aus der lokalen Git-Historie; es übernimmt keine Ausgaben der aktuellen Implementierung.
 
 ## Hinweis
 

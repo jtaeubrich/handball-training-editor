@@ -1,0 +1,1868 @@
+{
+  "source": "main v89 (49627eac1f8e32a7af7eb032919c7a37c1653051) before renderer extraction",
+  "cases": [
+    {
+      "name": "0-attacker",
+      "object": {
+        "kind": "symbol",
+        "type": "attacker",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "751a343aab526f3da6872287092c472f7803b657de8a4b799ac415ec085f6cf9",
+      "svgHash": "6c9b082eefaf9bfec9f73fc5c449912a7ddfa22343af99bd6f7c13325dc27fc4"
+    },
+    {
+      "name": "1-attackerBall",
+      "object": {
+        "kind": "symbol",
+        "type": "attackerBall",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "ab567d8f153a2b1faa9ee19325bfcebc4d4c8896ecb9c9540b6dc01be2f42dd3",
+      "svgHash": "71acd91ca37c588fb8e7b063a9ba8ec26ede017355bf3b96ed9ae020a8a7957e"
+    },
+    {
+      "name": "2-feeder",
+      "object": {
+        "kind": "symbol",
+        "type": "feeder",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "d5e8adf78ab136eb90de186e00b14b5e6e9209ec758744e72cda70df379e9cf6",
+      "svgHash": "dda80b01b674fee2dd2b024493ba0eb7d1f89733baebc457063e392a4978cffe"
+    },
+    {
+      "name": "3-defender",
+      "object": {
+        "kind": "symbol",
+        "type": "defender",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "9f13bb7a13e82dde99b3a82337f5155c78bb07301b9e2a1cf619d300cc3f0e48",
+      "svgHash": "7da146bd4f4094aad1f8f7774f1a18386653ceecd90bd13613c0700b1eaafac6"
+    },
+    {
+      "name": "4-goalkeeper",
+      "object": {
+        "kind": "symbol",
+        "type": "goalkeeper",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "0e53636b154c8e3fd9388dad5917ee613f45035bed7cde032da1d9edf2e95e03",
+      "svgHash": "d948abaa8fe46c689ea72fe8db3e8b73c29479557085e63d81a1d7efc8572d64"
+    },
+    {
+      "name": "5-ball",
+      "object": {
+        "kind": "symbol",
+        "type": "ball",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "f3a81bd2e0671c2be8d08071b398a0c53982cd56aefbfe7b7e9a7f1cf668877f",
+      "svgHash": "772d95aaf8918b0cf9c63852e662110951b30e9a8fe4aab9ce515cc475416697"
+    },
+    {
+      "name": "6-coach",
+      "object": {
+        "kind": "symbol",
+        "type": "coach",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "2d0c5ee7a518d9bd58e8cf207467d5a1f8e2ee70c307ff69bc279bdec320759b",
+      "svgHash": "bc5700e0b71d4a4b09134c190d9e6831d0ff4f25f7f9541f3f24d521ec9147a8"
+    },
+    {
+      "name": "7-cone",
+      "object": {
+        "kind": "symbol",
+        "type": "cone",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "e4c0ef7b677b40e570bc998939b403155050fc1a3f9e4a6bd9a174be6a2202c6",
+      "svgHash": "8a7fa30447939445bab702475441e6d2977887e598900f8b6684527a3570966c"
+    },
+    {
+      "name": "8-ring",
+      "object": {
+        "kind": "symbol",
+        "type": "ring",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "6525e65345674129fcb4d427f16b01c1217e9d6a41527773974d411889cf7ffe",
+      "svgHash": "d787045497e3f1a9a408f2e68ab9c41b4fd26bb061e6d1177f707e597d6f4c23"
+    },
+    {
+      "name": "9-disc",
+      "object": {
+        "kind": "symbol",
+        "type": "disc",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "d27ccd79613d959968f091cd618bd3b8e682aa37efd4d2b9e4bd5eac1a1fde9f",
+      "svgHash": "a9b332baad02993782a4e9eabf283500d34660dcdf82d5aa6d90bede3452e8a5"
+    },
+    {
+      "name": "10-airbody",
+      "object": {
+        "kind": "symbol",
+        "type": "airbody",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "18be386286b0a39b371897fe7fcfecf64d91c6e51a5a923592951e13bdaf1c6e",
+      "svgHash": "d11a5ab4f68375e6292944d748de09db74fc4587a6e04826b849116918c12117"
+    },
+    {
+      "name": "11-bench",
+      "object": {
+        "kind": "symbol",
+        "type": "bench",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "218cc8a7a21ba60913f85bbf4f3c17ab85346ab506f0122499a199d23daa4722",
+      "svgHash": "93e003fca5652a20790ac9f17a6a1ef9c59a1f48701917aaf65760a1aaa0143c"
+    },
+    {
+      "name": "12-mat",
+      "object": {
+        "kind": "symbol",
+        "type": "mat",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "00a8c1faa64d6831c064d9e27c3b3477eb6c9779b17f4ff603e60ff5c62925b3",
+      "svgHash": "eaf8755d013607434a4b5f19e33209c72f0de87192d61395457e16408c626e86"
+    },
+    {
+      "name": "13-crashMat",
+      "object": {
+        "kind": "symbol",
+        "type": "crashMat",
+        "x": 200,
+        "y": 210,
+        "size": 48,
+        "rotation": 37,
+        "color": "#1976d2",
+        "width": 2.5
+      },
+      "canvasHash": "ae92bd8aaabb89df6597a918fd1b70ffa8fddfae080da000599e56ef9a64976f",
+      "svgHash": "693bd2deb74ce37783b5595ea71876acd1e700939034e79ede03b766f5f1dac1"
+    },
+    {
+      "name": "14-run",
+      "object": {
+        "kind": "path",
+        "type": "run",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "6e44204dd059878fd001e5a171737c709e733879583de2cb742951e3168d035d",
+      "svgHash": "741717c401606731f661c85645ff0ac97e541e2c1eaf7f2e2f84e08454bfc7fc"
+    },
+    {
+      "name": "15-complexRun",
+      "object": {
+        "kind": "path",
+        "type": "complexRun",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "c1c3f033117e6e4fc2ab68e3cc88f6b5c5f898e76566e11cec1d9a9c24eadf40",
+      "svgHash": "93e9fff90bb582dbbe493a42a811fb831ed4c53e7e361daa5b4658b14c0d352e"
+    },
+    {
+      "name": "16-runMulti",
+      "object": {
+        "kind": "path",
+        "type": "runMulti",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "28363ae2edd779587f794ffbc480eb47c825c36f123bb68f916c04b31ddd8a61",
+      "svgHash": "dfc39abe1df6207ae6047d5a064bfb9080f7f7c236bf7d8882c8a4a7c1e53c56"
+    },
+    {
+      "name": "17-pass",
+      "object": {
+        "kind": "path",
+        "type": "pass",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "096e3d5433770a0569979aa326171e022e67573ff0515112f39a9426991229c2",
+      "svgHash": "ee45d791f441fbf0c7b8ffb03d55cb016978caade5bee5877951b647fbf4a49b"
+    },
+    {
+      "name": "18-passCurve",
+      "object": {
+        "kind": "path",
+        "type": "passCurve",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "2913042b9e5076d1fd5118dca353f786fb1f423692d9c0fe72b098e649032e6f",
+      "svgHash": "1cb7a38081877de53b0145fc7a2e91b67451ae92aff4f84e53104f0d73d0f415"
+    },
+    {
+      "name": "19-passFake",
+      "object": {
+        "kind": "path",
+        "type": "passFake",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "e3db29dd4c73dc7ce78464799fc26154e52029ab5537ac3cc9a5ad70ba4f41a7",
+      "svgHash": "835f48f0426808cc3ca1a171022447c5f2f0824ddb74b89622f1859ee47b9ed2"
+    },
+    {
+      "name": "20-passFakeCurve",
+      "object": {
+        "kind": "path",
+        "type": "passFakeCurve",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "54557007577884858be8bd86fdd0d843c2dedfaab583b7aeb7dcf3ed28f5e80b",
+      "svgHash": "d855c3a36672f3d9f96959fda8b064c44a7c92da3b5ed8062e1ed68684d7fc91"
+    },
+    {
+      "name": "21-runBall",
+      "object": {
+        "kind": "path",
+        "type": "runBall",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "5d8f5acc955230e175e28c2e5f1aa263b809a8c818ba136ba1824991e0bb4954",
+      "svgHash": "be4bf2aff1da79f5c2ab155de16fb52f2db7067fbfe08b65b8d96895f9e67cab"
+    },
+    {
+      "name": "22-runBallCurve",
+      "object": {
+        "kind": "path",
+        "type": "runBallCurve",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "8b3fa908e09389b82fa7a775b07515b57f1fd45f699f5bf72ceb411a9b34e703",
+      "svgHash": "96a7da67e91ebdbe83dce89588be450c934fe5a5907a904d9cc12dde2b2d3edb"
+    },
+    {
+      "name": "23-runBallMulti",
+      "object": {
+        "kind": "path",
+        "type": "runBallMulti",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "b1ecf88886c15410c19c8b964048f111764201a43c6f7bbbed33a86003d6b53f",
+      "svgHash": "2be8c64a5ac500cbe21839aa6fc90d333f405902f2311cd9f8746064be338214"
+    },
+    {
+      "name": "24-tip",
+      "object": {
+        "kind": "path",
+        "type": "tip",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "d60bc6a52b2e07c7da77a340212f3ceb17ec78586a74a076b534511831124c68",
+      "svgHash": "60cfaa107e813d3908f72763a2c922650e6bbf1d3f3d23a376a543813299250d"
+    },
+    {
+      "name": "25-tipCurve",
+      "object": {
+        "kind": "path",
+        "type": "tipCurve",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "080133972d0ad5ebbbc893f5b8fb431f283b411ec3f58aa9f484ee749d31ea3d",
+      "svgHash": "40e12d7a00a32de0d6f6c5aef61637dc0dcbded179d843ee0e1e865a6d4cd3a0"
+    },
+    {
+      "name": "26-dribble",
+      "object": {
+        "kind": "path",
+        "type": "dribble",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "08a47e6fc46618939581a44045d3814e350ad121f9d8c6f7fc627b5138636641",
+      "svgHash": "eb26eeb50c87c60510b4d6c015b556edab6095d5faafae4ab917dd348ec873a1"
+    },
+    {
+      "name": "27-dribbleCurve",
+      "object": {
+        "kind": "path",
+        "type": "dribbleCurve",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "52558a65777d91e33613857603229331aa8fb958acc9f59671db8cb0430695b3",
+      "svgHash": "23a1c150056b0d74b48d39772eb2c5d16ea544131574d2b885bbed70ba1704b0"
+    },
+    {
+      "name": "28-shot",
+      "object": {
+        "kind": "path",
+        "type": "shot",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "6d38362e11b56c7ada13b15141f2db9038250350b3bdb6f9765f2eb8cfc0c11f",
+      "svgHash": "3a199743e77f10204b1f02b2b9170e3ab23706c6c4fccec90a34f71dbc06f114"
+    },
+    {
+      "name": "29-shotCurve",
+      "object": {
+        "kind": "path",
+        "type": "shotCurve",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "143afeff3542b4890357e2696f1445addfd8fbe9ab5ac00575394604a5016272",
+      "svgHash": "dd8ff24f32d10c1d29bbbabf3de3feffd66e938633cc452db4340085d0cac981"
+    },
+    {
+      "name": "30-shotFake",
+      "object": {
+        "kind": "path",
+        "type": "shotFake",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "4b5212d73fc415b53c05a5072cdabd92f028c5dce4589dc90e3e7a33310f5222",
+      "svgHash": "52dbf9666edcb1e07c4a6648f5315e861ad18980e3ef7d5d6cdc4464ecb043a5"
+    },
+    {
+      "name": "31-shotFakeCurve",
+      "object": {
+        "kind": "path",
+        "type": "shotFakeCurve",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "ecec0582a12e9813cead02287ed061ad44b81131cf1f4d9e15018bb1240fe745",
+      "svgHash": "610fe16623e08bbc6df64bac6f2d4ecf68aa49663b763f128d2c852e0045f34c"
+    },
+    {
+      "name": "32-screen",
+      "object": {
+        "kind": "path",
+        "type": "screen",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "e7b14001b170e9e3e48ba53f81c26e6c9e7252bc27d1e638c1bb515369e2170b",
+      "svgHash": "d7fe3dc2e77368d33919bd8cced4430afe47f293903e879b3acfade564f3ea41"
+    },
+    {
+      "name": "33-screenCurve",
+      "object": {
+        "kind": "path",
+        "type": "screenCurve",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "71c73afbe8b1dac6cf6cbed86ce4e794e9c68f1fe0d9a4c54f934a4c47e03eea",
+      "svgHash": "5df1b2ed105e0af8b57828b9bb5c43fe0341fabb908dd4a2eb173afd5cae5a5a"
+    },
+    {
+      "name": "34-screenMulti",
+      "object": {
+        "kind": "path",
+        "type": "screenMulti",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#e53935",
+        "width": 3
+      },
+      "canvasHash": "b989641406bf9a2edd91e55b108a9b2c2f7bd841cba2cb42069f114d00a8438f",
+      "svgHash": "0514eb973a1d9c61bc1d5004252e4eb694ff1a83dca3a1c23ac27c989e5387c3"
+    },
+    {
+      "name": "35-freehand",
+      "object": {
+        "kind": "freehand",
+        "type": "freehand",
+        "points": [
+          {
+            "x": 20,
+            "y": 30
+          },
+          {
+            "x": 40,
+            "y": 60
+          },
+          {
+            "x": 80,
+            "y": 45
+          }
+        ],
+        "color": "#123456",
+        "width": 4
+      },
+      "canvasHash": "22ef67fc04c6d1db98f564695691c3f7ebb2fdc2b7c864c8922acfe8699bcbc7",
+      "svgHash": "0432cd4798a1c724dda147b77361d308ed2b3c103cc330039f080da2252c8c23"
+    },
+    {
+      "name": "36-attacker",
+      "object": {
+        "kind": "symbol",
+        "type": "attacker",
+        "x": 200,
+        "y": 210,
+        "size": 32,
+        "rotation": 90,
+        "color": "#1976d2",
+        "width": 2,
+        "showLabel": true,
+        "label": "<RM & \"A\">",
+        "labelOffsetX": 19,
+        "labelOffsetY": -13
+      },
+      "canvasHash": "f424da12042d63728c4f1205d1f7526843075c7cc760b60529788ac2ea512b09",
+      "svgHash": "fb80406575e38706f7ed99bf05b6f74df458798db41de132de7fd545af6e0414"
+    },
+    {
+      "name": "37-attackerBall",
+      "object": {
+        "kind": "symbol",
+        "type": "attackerBall",
+        "x": 200,
+        "y": 210,
+        "size": 32,
+        "rotation": 90,
+        "color": "#1976d2",
+        "width": 2,
+        "showLabel": true,
+        "label": "<RM & \"A\">",
+        "labelOffsetX": 19,
+        "labelOffsetY": -13
+      },
+      "canvasHash": "aaa42a254935651574341e3e73c39b38a227b08eefc2c45bae70f33aabde4400",
+      "svgHash": "7db7816cc8579d5562d17c770131d32db06d6c99aae3868a3a963ca4ef4ee809"
+    },
+    {
+      "name": "38-defender",
+      "object": {
+        "kind": "symbol",
+        "type": "defender",
+        "x": 200,
+        "y": 210,
+        "size": 32,
+        "rotation": 90,
+        "color": "#1976d2",
+        "width": 2,
+        "showLabel": true,
+        "label": "<RM & \"A\">",
+        "labelOffsetX": 19,
+        "labelOffsetY": -13
+      },
+      "canvasHash": "7e27e413f4b2b98991995d59ae40b64a187047ce6392a0eb50142663c45b16da",
+      "svgHash": "7cd65a3e6720bc6c746a3582474830fd76155584ec95bdf8b95b197b06bb01ae"
+    },
+    {
+      "name": "39-run",
+      "object": {
+        "kind": "path",
+        "type": "run",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#111111",
+        "width": 2,
+        "showLabel": true,
+        "label": "B",
+        "labelOffsetX": -18,
+        "labelOffsetY": 25
+      },
+      "canvasHash": "f687f0c8dcba929f9b1329c09df812c0e3cb73bcb4552a5a802accfe2c6c4453",
+      "svgHash": "d150de519dd4e8bde087c989a682ab6576cab49298bd9bc03a63412bdf2ab371"
+    },
+    {
+      "name": "40-complexRun",
+      "object": {
+        "kind": "path",
+        "type": "complexRun",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#111111",
+        "width": 2,
+        "showLabel": true,
+        "label": "B",
+        "labelOffsetX": -18,
+        "labelOffsetY": 25
+      },
+      "canvasHash": "4d78955425412e77c26bb09024492ab2d05a4c04b01604856ecffeab41276e38",
+      "svgHash": "9f7705a7561fdf18608d14ee34ee9f8ac1a3f07e347b98b28d4fcfc9567fb8df"
+    },
+    {
+      "name": "41-runMulti",
+      "object": {
+        "kind": "path",
+        "type": "runMulti",
+        "x1": 50,
+        "y1": 70,
+        "x2": 260,
+        "y2": 190,
+        "cx1": 80,
+        "cy1": 220,
+        "cx2": 200,
+        "cy2": 20,
+        "points": [
+          {
+            "x": 50,
+            "y": 70
+          },
+          {
+            "x": 140,
+            "y": 160
+          },
+          {
+            "x": 260,
+            "y": 190
+          }
+        ],
+        "color": "#111111",
+        "width": 2,
+        "showLabel": true,
+        "label": "B",
+        "labelOffsetX": -18,
+        "labelOffsetY": 25
+      },
+      "canvasHash": "56fb02cf3206e4f5f9554cf60e49d6c3251603a01d962be393c2f987831dfdc7",
+      "svgHash": "d3c4508dfffc5643956ae5eaf766f0f3dca5ba791f5aca38d57f4b7932e87122"
+    },
+    {
+      "name": "42-run",
+      "object": {
+        "kind": "path",
+        "type": "run",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "90feefd9a3f0e7c8948f32e6c13e0d81270e3d5e3dcb4eee8aad5c639df1b376",
+      "svgHash": "a8996adecc14c03a7d632383d7fe023655779b112be79a629cd4eae3ba8eebb8"
+    },
+    {
+      "name": "43-complexRun",
+      "object": {
+        "kind": "path",
+        "type": "complexRun",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "64811f73cb638bb7357cf98593ca2726b030d1d54c71e25b831bd1eabe3ede54",
+      "svgHash": "0bb98550668af42910d8dec85e1761c3ff538bddd4743fc3328589d688921f44"
+    },
+    {
+      "name": "44-runMulti",
+      "object": {
+        "kind": "path",
+        "type": "runMulti",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "72983dad74573b08e2a4c0a7f1862b5ef609bf6c482d6eee2c4d26e4be5171e9",
+      "svgHash": "85d79a2518e979ed362a369d5085a174f9c6952ac5eec3c6d500bd59762aad72"
+    },
+    {
+      "name": "45-pass",
+      "object": {
+        "kind": "path",
+        "type": "pass",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "5c9110d20ec99a617622c3b2d66e768ab5066cb1ab334a4da225f2979e79eac5",
+      "svgHash": "2e7e619c5ad17265fe56e9cccde41648f035e5ca9a9b31888d723f71fad2c4ad"
+    },
+    {
+      "name": "46-passCurve",
+      "object": {
+        "kind": "path",
+        "type": "passCurve",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "406a38f5a4f6c409aaabe38e4bccac85d3af99e6666c5ee572ed724d0cf02a60",
+      "svgHash": "0568b85fe6037a151c6d111385cd80282f64173240ec106106cc3043c388159c"
+    },
+    {
+      "name": "47-passFake",
+      "object": {
+        "kind": "path",
+        "type": "passFake",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "bb8073f3ac0ed967745d6f1dccbeffd4b2f060130b2873cf97b6ef538f510ea0",
+      "svgHash": "8386d1c249cdd77afc5ccf23162a34f3f7137771b8e8ad4ad626d259e7ab583c"
+    },
+    {
+      "name": "48-passFakeCurve",
+      "object": {
+        "kind": "path",
+        "type": "passFakeCurve",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "1cc97eb651115e510ed806e8c34d5f90e6b04674fedf0074957a1b03f4fc09b9",
+      "svgHash": "6b5f44da59501cca89502ad69da8cf37df225c4df4f661c0a6dcf816f65915bf"
+    },
+    {
+      "name": "49-runBall",
+      "object": {
+        "kind": "path",
+        "type": "runBall",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "404fade5d2c1c0aec6df9b6e855a20eda6ba1cc39a70d19c841cee0de95868ac",
+      "svgHash": "6de221d0fdb558dc7f7f6f8aa75cadae520d2ce9905e890f590a6f30dc93dc4b"
+    },
+    {
+      "name": "50-runBallCurve",
+      "object": {
+        "kind": "path",
+        "type": "runBallCurve",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "ced8497849fa9147ae27f43a41d898f680ce476c106432733d00f2bbaed05228",
+      "svgHash": "cd0cd7d67e956046ba00935907c31a94cb2fc03e75674ded0f371103367c5605"
+    },
+    {
+      "name": "51-runBallMulti",
+      "object": {
+        "kind": "path",
+        "type": "runBallMulti",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "2288644be6ea3081b9d957cedb564949cdc7cadb27612d1b15c6bbd4c5fea7a5",
+      "svgHash": "8b071f92fe5c1c2863aec01acbf1e9726f4972cb424a24a6aea8fe0fcc1fdf60"
+    },
+    {
+      "name": "52-tip",
+      "object": {
+        "kind": "path",
+        "type": "tip",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "739d6b71a14c5c738dd4f0cff4c8ea857ad2264151b1f47d48e2cd1512fe9a78",
+      "svgHash": "8695f49245afd4e141a5aabf40f69f675e29d10d9ae2dbcbea560ca599091a4c"
+    },
+    {
+      "name": "53-tipCurve",
+      "object": {
+        "kind": "path",
+        "type": "tipCurve",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "ced8497849fa9147ae27f43a41d898f680ce476c106432733d00f2bbaed05228",
+      "svgHash": "57245a4cf938400f7d838fe9b4b1432de6c58847c0d0070dd301bcf714e8dcd8"
+    },
+    {
+      "name": "54-dribble",
+      "object": {
+        "kind": "path",
+        "type": "dribble",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "c0b06ac70c1246ff7488cb373ebca79e800608e1d0e4cd3e41fac187ea11b7ba",
+      "svgHash": "017102764b5e8a83e6c9079fdc90922f22ceeb588ab1689e73d4e4e36778baf3"
+    },
+    {
+      "name": "55-dribbleCurve",
+      "object": {
+        "kind": "path",
+        "type": "dribbleCurve",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "7314833749db4a6151b2b940743a158efa76b2ad1a3747225afe276d5421b357",
+      "svgHash": "441a40b421d728573321557fe01b398d072b5ffe1a1e43c234253b76d6d53bde"
+    },
+    {
+      "name": "56-shot",
+      "object": {
+        "kind": "path",
+        "type": "shot",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "eddd5dccb193cc508def56eebb6e2f4e0c369b7740ccb6b5da0f7bdfd64636fe",
+      "svgHash": "ead96de6dc27ffbf20219e713c0310b9a845c473ac1a6b727b80925ef927c351"
+    },
+    {
+      "name": "57-shotCurve",
+      "object": {
+        "kind": "path",
+        "type": "shotCurve",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "a1bfc88b35b8f5a7ccc8c86159ea68379ed18047c6c8515011c94f1189f1fd45",
+      "svgHash": "57a5bf5f059020a9f1f296d516650a49fc2427438cfae3f883d71e5ffa38b50b"
+    },
+    {
+      "name": "58-shotFake",
+      "object": {
+        "kind": "path",
+        "type": "shotFake",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "a413d0080ce1b496f453293332ecc0704bd82ebb273ee2042999b676dd255fa2",
+      "svgHash": "2b5212063e7fddee46051d80bcd4393bebccedf36edf9d733cfbb3679a322487"
+    },
+    {
+      "name": "59-shotFakeCurve",
+      "object": {
+        "kind": "path",
+        "type": "shotFakeCurve",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "bc80761b2570c42fb1d7cfd45d8e73979e688f855b78739478e201e8c702c0ce",
+      "svgHash": "a3f83e799e6871abd0a2d3a49a827cf936876fa24904474abc978d9234a899d7"
+    },
+    {
+      "name": "60-screen",
+      "object": {
+        "kind": "path",
+        "type": "screen",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "192179ed93704d125e5724415bf1f6de9c24f6b5a39c6bb9c7af1036853fbe7c",
+      "svgHash": "64f6a40e02ce8ced5b1be4fa587ce302be0c376ec954678b5b28065fefdd2b3f"
+    },
+    {
+      "name": "61-screenCurve",
+      "object": {
+        "kind": "path",
+        "type": "screenCurve",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "10a4afb1019de61cefb3b4fd8e7832f7c1457f3818449697a452ad42923f62a3",
+      "svgHash": "165955b683d86c77405f2c28d48a757aa71286ade666be74cde0b9043b9e2633"
+    },
+    {
+      "name": "62-screenMulti",
+      "object": {
+        "kind": "path",
+        "type": "screenMulti",
+        "x1": 80,
+        "y1": 90,
+        "x2": 80,
+        "y2": 90,
+        "cx1": 80,
+        "cy1": 90,
+        "cx2": 80,
+        "cy2": 90,
+        "points": [
+          {
+            "x": 80,
+            "y": 90
+          },
+          {
+            "x": 80,
+            "y": 90
+          }
+        ],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "da549d9630b6d77f2146839b21bf40931fed2f49b4ddf0cfcec74a27f4968117",
+      "svgHash": "8e363f7afacb98e8ef50e1cc5f8de3572c55715444995bbdb45b23167b814f79"
+    },
+    {
+      "name": "63-freehand",
+      "object": {
+        "kind": "freehand",
+        "type": "freehand",
+        "points": [],
+        "color": "#111111",
+        "width": 2
+      },
+      "canvasHash": "7b86acd7170031caed3e4e07ef6d0792326fda30865c36978a58206a895fb958",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "courts": [
+    {
+      "mode": "none",
+      "rotation": "0",
+      "theme": "gray",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "none",
+      "rotation": "0",
+      "theme": "blue",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "none",
+      "rotation": "90",
+      "theme": "gray",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "none",
+      "rotation": "90",
+      "theme": "blue",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "none",
+      "rotation": "180",
+      "theme": "gray",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "none",
+      "rotation": "180",
+      "theme": "blue",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "none",
+      "rotation": "270",
+      "theme": "gray",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "none",
+      "rotation": "270",
+      "theme": "blue",
+      "svgHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "mode": "half",
+      "rotation": "0",
+      "theme": "gray",
+      "svgHash": "445db520b6a73e8cedceed35350d4560850bf85dd0fe9e90deaac9fca449befa"
+    },
+    {
+      "mode": "half",
+      "rotation": "0",
+      "theme": "blue",
+      "svgHash": "9456ca4e127d2268dbcbb5bdc9941760171b5c940ffe15c60fc06345e74cfdf9"
+    },
+    {
+      "mode": "half",
+      "rotation": "90",
+      "theme": "gray",
+      "svgHash": "f4a608a596d77328863da0fdbf6d74a445a3b2ef118b6b9e2935b874025da1a2"
+    },
+    {
+      "mode": "half",
+      "rotation": "90",
+      "theme": "blue",
+      "svgHash": "115aaef058c0bde7491277fbc5c034b651e9c1bb45e028240d03cd598910cbbf"
+    },
+    {
+      "mode": "half",
+      "rotation": "180",
+      "theme": "gray",
+      "svgHash": "53b032153838bd7673da33f2d515e9a623c3f429a4bc9d7e200ed2d3553f6810"
+    },
+    {
+      "mode": "half",
+      "rotation": "180",
+      "theme": "blue",
+      "svgHash": "c880d1bb45745824cdb4af3d87c096b853853265277b0b99902f82c3b17060a5"
+    },
+    {
+      "mode": "half",
+      "rotation": "270",
+      "theme": "gray",
+      "svgHash": "1b418702f391515851cc68324186cb92b9f2784e0eaf9daf464d1840d5d78cd6"
+    },
+    {
+      "mode": "half",
+      "rotation": "270",
+      "theme": "blue",
+      "svgHash": "5b8c517aacde3f73a14a3ae9402092cf91e9b45e6264249c20cab12395f005d2"
+    },
+    {
+      "mode": "full",
+      "rotation": "0",
+      "theme": "gray",
+      "svgHash": "edfe1df67bbcbbed192ef7eb2f504f26268004ef6e937aab5320e0a72433121d"
+    },
+    {
+      "mode": "full",
+      "rotation": "0",
+      "theme": "blue",
+      "svgHash": "7d5d8f3476625a2701b292e4a38afb46fd05e36ac9bae7bf84e6beca0c9ead7e"
+    },
+    {
+      "mode": "full",
+      "rotation": "90",
+      "theme": "gray",
+      "svgHash": "502597e5baa42a56184c92f272003f3d3a4a909e3ba6f5ea9e5d07b4d640fd33"
+    },
+    {
+      "mode": "full",
+      "rotation": "90",
+      "theme": "blue",
+      "svgHash": "092977342346ceecca52716fde920bb84fe0293bcf1ee4a388e13370a07e21de"
+    },
+    {
+      "mode": "full",
+      "rotation": "180",
+      "theme": "gray",
+      "svgHash": "e2fe1c8398fbc7438cba0a3a11be8454989ee2b9f83cd46378d3c9efe69c735b"
+    },
+    {
+      "mode": "full",
+      "rotation": "180",
+      "theme": "blue",
+      "svgHash": "456fb2a945304de6b6e134b04ad87daba113d4294a862068dab064e3ab24b45d"
+    },
+    {
+      "mode": "full",
+      "rotation": "270",
+      "theme": "gray",
+      "svgHash": "e3897b90881c4617ee587375d9a6415bce33584752581974f39563b0754f4d1c"
+    },
+    {
+      "mode": "full",
+      "rotation": "270",
+      "theme": "blue",
+      "svgHash": "0fceaee0b55ffbbb419a58e6aa9360af0249deee988e5afe5ed1d96c64ce5b63"
+    }
+  ]
+}

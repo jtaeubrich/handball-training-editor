@@ -1,9 +1,16 @@
-const VERSION = 'v79';
+const VERSION = 'v90';
 const STATIC_CACHE = `handballtrainer-static-${VERSION}`;
 const NAV_CACHE = `handballtrainer-nav-${VERSION}`;
 
 const STATIC_ASSETS = [
   './manifest.webmanifest',
+  './js/project-io.js',
+  './js/export.js',
+  './js/state-history.js',
+  './js/selection.js',
+  './js/geometry.js',
+  './js/renderer-canvas.js',
+  './js/renderer-svg.js',
   './README.md',
   './icons/icon-192.png',
   './icons/icon-512.png',

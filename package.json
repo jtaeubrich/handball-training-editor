@@ -1,7 +1,7 @@
 {
   "name": "handball-training-editor",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.90.0",
   "scripts": {
     "test:e2e": "playwright test"
   },

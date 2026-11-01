@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 const emptyProject = {
-  version: 86,
+  version: 87,
   canvas: { width: 820, height: 820 },
   court: {
     mode: 'half',
@@ -73,6 +73,52 @@ test('refactored IO and export modules are loaded', async ({ page }) => {
   expect(modules.projectIO).toBe('function');
   expect(modules.exportSvg).toBe('function');
   expect(modules.exportPng).toBe('function');
+});
+
+test('history manager supports commit, undo and redo', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const history = window.HandballStateHistory.createHistory({
+      initialObjects: [{ id: 1 }],
+      maxEntries: 10
+    });
+
+    history.commit([{ id: 1 }, { id: 2 }]);
+    history.commit([{ id: 1 }, { id: 2 }, { id: 3 }]);
+
+    const undo = history.undo();
+    const redo = history.redo();
+
+    return {
+      undoLength: undo.length,
+      redoLength: redo.length,
+      debug: history.debugState()
+    };
+  });
+
+  expect(result.undoLength).toBe(2);
+  expect(result.redoLength).toBe(3);
+  expect(result.debug.historyLength).toBe(3);
+  expect(result.debug.redoLength).toBe(0);
+});
+
+test('selection helper supports single, toggle and rectangle multi-selection', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const indices = new Set();
+    let selected = window.HandballSelection.setSingle(indices, 1);
+    selected = window.HandballSelection.toggle(indices, selected, 3);
+    selected = window.HandballSelection.applyRectangle(indices, [0, 2], true);
+
+    const objects = ['a','b','c','d'];
+    return {
+      selected,
+      indices: Array.from(indices).sort((a,b) => a-b),
+      objects: window.HandballSelection.selectedObjects(indices, objects)
+    };
+  });
+
+  expect(result.selected).toBe(2);
+  expect(result.indices).toEqual([0,1,2,3]);
+  expect(result.objects).toEqual(['a','b','c','d']);
 });
 
 test('loaded project saves back to the same file handle and name', async ({ page }) => {

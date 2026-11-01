@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 const emptyProject = {
-  version: 88,
+  version: 89,
   canvas: { width: 820, height: 820 },
   court: {
     mode: 'half',
@@ -238,6 +238,7 @@ test('desktop label offset control can be scrolled fully into view', async ({ pa
   await page.evaluate(() => {
     const btn = document.querySelector('.tool[data-tool="attacker"]');
     btn.click();
+
     const canvas = document.querySelector('#c');
     const rect = canvas.getBoundingClientRect();
     canvas.dispatchEvent(new PointerEvent('pointerdown', {
@@ -249,12 +250,15 @@ test('desktop label offset control can be scrolled fully into view', async ({ pa
     }));
   });
 
-  await page.getByRole('button', { name: 'Auswahl', exact: true }).click();
-  await page.locator('#c').click({ position: { x: 300, y: 300 } });
-
-  const props = page.locator('.properties');
   const editor = page.locator('#labelOffsetEditor');
-  await editor.scrollIntoViewIfNeeded();
+  await expect(page.locator('#labelProps')).toBeVisible();
+  await expect(editor).toBeVisible();
+
+  await page.evaluate(() => {
+    document.querySelector('#labelOffsetEditor').scrollIntoView({
+      block:'end'
+    });
+  });
 
   const boxes = await page.evaluate(() => {
     const p = document.querySelector('.properties').getBoundingClientRect();

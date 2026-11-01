@@ -966,7 +966,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v86</span>
+    <span>Einstellungen · v87</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1172,7 +1172,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v86</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v87</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1786,6 +1786,8 @@
 
 <script src="./js/project-io.js"></script>
 <script src="./js/export.js"></script>
+<script src="./js/state-history.js"></script>
+<script src="./js/selection.js"></script>
 <script>
 (() => {
   const canvas = document.getElementById('c');
@@ -2170,8 +2172,10 @@
   let freehandColor = '#111111';
 
   let objects = [];
-  let redoStack = [];
-  let history = [[]];
+  const historyManager = window.HandballStateHistory.createHistory({
+    initialObjects: objects,
+    maxEntries: 100
+  });
 
   let tool = 'select';
   let selected = -1; // primary selection, kept for existing single-object editing logic
@@ -2288,54 +2292,33 @@
   }
 
   function clearSelection() {
-    selected = -1;
-    selectedIndices.clear();
+    selected = window.HandballSelection.clear(selectedIndices);
   }
 
   function setSingleSelection(index) {
-    selected = index;
-    selectedIndices.clear();
-    if (index >= 0) selectedIndices.add(index);
+    selected = window.HandballSelection.setSingle(selectedIndices, index);
   }
 
   function toggleSelection(index) {
-    if (index < 0) return;
-    if (selectedIndices.has(index)) {
-      selectedIndices.delete(index);
-      if (selected === index) {
-        selected = selectedIndices.size ? Array.from(selectedIndices).at(-1) : -1;
-      }
-    } else {
-      selectedIndices.add(index);
-      selected = index;
-    }
+    selected = window.HandballSelection.toggle(selectedIndices, selected, index);
   }
 
   function selectedObjects() {
-    return Array.from(selectedIndices)
-      .filter(i => i >= 0 && i < objects.length)
-      .map(i => objects[i]);
+    return window.HandballSelection.selectedObjects(selectedIndices, objects);
   }
 
   function duplicateSelectedObjects() {
-    const indices = Array.from(selectedIndices).filter(i => i >= 0 && i < objects.length).sort((a,b) => a-b);
-    if (!indices.length) return [];
-
-    const newIndices = [];
-    indices.forEach(i => {
-      const copy = clone(objects[i]);
-      objects.push(copy);
-      newIndices.push(objects.length - 1);
-    });
-
-    selectedIndices.clear();
-    newIndices.forEach(i => selectedIndices.add(i));
-    selected = newIndices[newIndices.length - 1];
-    return newIndices;
+    const result = window.HandballSelection.duplicateSelected(
+      selectedIndices,
+      objects,
+      clone
+    );
+    selected = result.selected;
+    return result.newIndices;
   }
 
   function selectionCount() {
-    return selectedIndices.size;
+    return window.HandballSelection.count(selectedIndices);
   }
 
   function moveObjectBy(o, dx, dy) {
@@ -2583,25 +2566,22 @@
   }
 
   function commit() {
-    history.push(clone(objects));
-    if (history.length > 100) history.shift();
-    redoStack = [];
+    historyManager.commit(objects);
   }
 
   function undo() {
-    if (history.length <= 1) return;
-    redoStack.push(history.pop());
-    objects = clone(history[history.length - 1]);
+    const state = historyManager.undo();
+    if (!state) return;
+    objects = state;
     clearSelection();
     updateProperties();
     draw();
   }
 
   function redo() {
-    if (!redoStack.length) return;
-    const state = redoStack.pop();
-    history.push(clone(state));
-    objects = clone(state);
+    const state = historyManager.redo();
+    if (!state) return;
+    objects = state;
     clearSelection();
     updateProperties();
     draw();
@@ -3034,8 +3014,7 @@
     // shallowly. This avoids repeatedly cloning up to 100 full drawings.
     return {
       objects:clone(objects),
-      history:history.slice(),
-      redoStack:redoStack.slice(),
+      historyState:historyManager.snapshot(),
       selected,
       selectedIndices:Array.from(selectedIndices),
       drawing:drawing ? clone(drawing) : null
@@ -3046,8 +3025,7 @@
     if (!touchGestureCheckpoint) return;
 
     objects = clone(touchGestureCheckpoint.objects);
-    history = touchGestureCheckpoint.history.slice();
-    redoStack = touchGestureCheckpoint.redoStack.slice();
+    historyManager.restore(touchGestureCheckpoint.historyState);
 
     selected = touchGestureCheckpoint.selected;
     selectedIndices = new Set(touchGestureCheckpoint.selectedIndices);
@@ -3686,9 +3664,11 @@
         objects.forEach((o, i) => {
           if (objectFullyInsideRect(o, r)) hits.push(i);
         });
-        if (!selectionRect.additive) selectedIndices.clear();
-        hits.forEach(i => selectedIndices.add(i));
-        selected = selectedIndices.size ? Array.from(selectedIndices).at(-1) : -1;
+        selected = window.HandballSelection.applyRectangle(
+          selectedIndices,
+          hits,
+          selectionRect.additive
+        );
       }
       selectionRect = null;
       updateProperties();
@@ -7205,7 +7185,7 @@ ${rotateClose}`;
 
   async function saveProject() {
     const data = {
-      version: 86,
+      version: 87,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -7317,9 +7297,8 @@ ${rotateClose}`;
 
         resizeCanvasForStoryboard();
 
-        selected=-1;
-        history=[clone(objects)];
-        redoStack=[];
+        clearSelection();
+        historyManager.reset(objects);
 
         const loadedProjectName = projectFileController.setLoadedFile(file, fileHandle);
 
@@ -8164,7 +8143,7 @@ ${rotateClose}`;
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
-  if ('serviceWorker' in navigator) {
+  if ('serviceWorker' in navigator && navigator.webdriver !== true) {
     let swControllerReloaded = false;
 
     navigator.serviceWorker.addEventListener('controllerchange', () => {

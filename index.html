@@ -966,7 +966,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v91</span>
+    <span>Einstellungen · v92</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1172,7 +1172,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v91</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v92</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1789,6 +1789,7 @@
 <script src="./js/state-history.js"></script>
 <script src="./js/selection.js"></script>
 <script src="./js/geometry.js"></script>
+<script src="./js/object-model.js"></script>
 <script src="./js/renderer-canvas.js"></script>
 <script src="./js/renderer-svg.js"></script>
 <script>
@@ -2170,7 +2171,14 @@
   const attackerPropColors = document.getElementById('attackerPropColors');
   const defenderPropColors = document.getElementById('defenderPropColors');
 
-  const markerTypes = new Set(['cone','ring','disc','airbody']);
+  const objectModel = window.HandballObjectModel;
+  const {
+    markerTypes, pathTools, rotatableTypes, labelTypes, pathLabelLetters,
+    attackLabels, defenseLabels, typeNames, LABEL_OFFSET_MIN, LABEL_OFFSET_MAX,
+    isComplexPath, isMultiPointPath, basePathType, objectSupportsLabel,
+    clamp, ensureLabelOffset, syncMultiPathExtents
+  } = objectModel;
+
   let markerColor = '#f2c500';
   let freehandColor = '#111111';
 
@@ -2199,96 +2207,6 @@
   let rotatingGroup = false;
   let groupRotateCenter = null;
   let groupRotateLastAngle = 0;
-
-  const pathTools = new Set(['run','complexRun','runMulti','pass','passCurve','passFake','passFakeCurve','runBall','runBallCurve','runBallMulti','tip','tipCurve','dribble','dribbleCurve','shot','shotCurve','shotFake','shotFakeCurve','screen','screenCurve','screenMulti']);
-
-  const complexPathTypes = new Set([
-    'complexRun','passCurve','passFakeCurve','runBallCurve',
-    'tipCurve','dribbleCurve','shotCurve','shotFakeCurve','screenCurve'
-  ]);
-
-  const multiPointPathTypes = new Set(['runMulti','runBallMulti','screenMulti']);
-
-  function isComplexPath(oOrType) {
-    const t = typeof oOrType === 'string' ? oOrType : oOrType?.type;
-    return complexPathTypes.has(t);
-  }
-
-  function isMultiPointPath(oOrType) {
-    const t = typeof oOrType === 'string' ? oOrType : oOrType?.type;
-    return multiPointPathTypes.has(t);
-  }
-
-  function basePathType(oOrType) {
-    const t = typeof oOrType === 'string' ? oOrType : oOrType?.type;
-    const map = {
-      complexRun:'run',
-      runMulti:'run',
-      passCurve:'pass',
-      passFakeCurve:'passFake',
-      runBallCurve:'runBall',
-      runBallMulti:'runBall',
-      tipCurve:'tip',
-      dribbleCurve:'dribble',
-      shotCurve:'shot',
-      shotFakeCurve:'shotFake',
-      screenCurve:'screen',
-      screenMulti:'screen'
-    };
-    return map[t] || t;
-  }
-
-  const rotatableTypes = new Set(['attacker','attackerBall','defender','goalkeeper','airbody','bench','mat','crashMat']);
-  const labelTypes = new Set(['attacker','attackerBall','defender']);
-  const pathLabelLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-
-  const attackLabels = {
-    '33': ['LA','RL','RM','KS','RR','RA'],
-    '24': ['RA','RR','KR','RL','KL','LA']
-  };
-  const defenseLabels = {
-    '321': ['AL','HL','VM','HM','HR','AR'],
-    '60': ['AL','HL','IL','IR','HR','AR']
-  };
-
-  const typeNames = {
-    attacker: 'Angriffsspieler',
-    attackerBall: 'Angreifer mit Ball',
-    feeder: 'Anspieler',
-    defender: 'Abwehrspieler',
-    goalkeeper: 'Torwart',
-    coach: 'Trainer / Übungsleiter',
-    run: 'Laufweg',
-    complexRun: 'Komplexer Laufweg',
-    runMulti: 'Mehrpunkt-Laufweg',
-    pass: 'Ballweg / Passweg',
-    passCurve: 'Komplexer Ballweg / Passweg',
-    passFake: 'Passtäuschung',
-    passFakeCurve: 'Komplexe Passtäuschung',
-    runBall: 'Laufweg mit Ball',
-    runBallCurve: 'Komplexer Laufweg mit Ball',
-    runBallMulti: 'Mehrpunkt-Laufweg mit Ball',
-    tip: 'Tippen des Balls',
-    tipCurve: 'Komplexes Tippen des Balls',
-    dribble: 'Prellen des Balls',
-    dribbleCurve: 'Komplexes Prellen des Balls',
-    shot: 'Torwurf',
-    shotCurve: 'Komplexer Torwurf',
-    shotFake: 'Torwurftäuschung',
-    shotFakeCurve: 'Komplexe Torwurftäuschung',
-    screen: 'Sperre',
-    screenCurve: 'Komplexe Sperre',
-    screenMulti: 'Mehrpunkt-Sperre',
-    cone: 'Hütchen',
-    ring: 'Reifen',
-    disc: 'Markierung',
-    ball: 'Ball',
-    freehand: 'Freihandzeichnung',
-    bench: 'Turnbank',
-    mat: 'Sportmatte',
-    crashMat: 'Weichbodenmatte',
-    airbody: 'Air Body'
-  };
 
   function clone(v) {
     return JSON.parse(JSON.stringify(v));
@@ -3383,14 +3301,7 @@
     }
 
     if (tool === 'freehand') {
-      drawing = {
-        kind:'freehand',
-        type:'freehand',
-        points:[{x:p.x,y:p.y}],
-        x1:p.x, y1:p.y, x2:p.x, y2:p.y,
-        color:freehandColor,
-        width:+strokeWidth.value
-      };
+      drawing = objectModel.createFreehand(p, {color:freehandColor, width:+strokeWidth.value});
       return;
     }
 
@@ -3398,18 +3309,7 @@
       const now = performance.now();
 
       if (!drawing || drawing.type !== tool || !Array.isArray(drawing.points)) {
-        drawing = {
-          kind:'path',
-          type:tool,
-          points:[{x:p.x,y:p.y},{x:p.x,y:p.y}],
-          x1:p.x, y1:p.y, x2:p.x, y2:p.y,
-          color:'#111111',
-          width:+strokeWidth.value,
-          showLabel:false,
-          label:'A',
-          labelOffsetX:0,
-          labelOffsetY:0
-        };
+        drawing = objectModel.createPath(tool, p, {width:+strokeWidth.value});
 
         lastMultiPathClickTime = now;
         lastMultiPathClickPoint = {x:p.x,y:p.y};
@@ -3446,69 +3346,16 @@
     }
 
     if (pathTools.has(tool)) {
-      drawing = {
-        kind:'path',
-        type:tool,
-        x1:p.x, y1:p.y, x2:p.x, y2:p.y,
-        color:'#111111',
-        width:+strokeWidth.value,
-        showLabel:false,
-        label:'A',
-        labelOffsetX:0,
-        labelOffsetY:0
-      };
-
-      if (isComplexPath(tool)) {
-        drawing.cx1 = p.x;
-        drawing.cy1 = p.y;
-        drawing.cx2 = p.x;
-        drawing.cy2 = p.y;
-      }
+      drawing = objectModel.createPath(tool, p, {width:+strokeWidth.value});
       return;
     }
 
-    const defaultSymbolColor =
-      (tool === 'attacker' || tool === 'attackerBall' || tool === 'feeder') ? '#1976d2' :
-      (tool === 'defender' || tool === 'goalkeeper') ? '#d32f2f' :
-      tool === 'bench' ? '#b8874f' :
-      tool === 'mat' ? '#4da3d9' :
-      tool === 'crashMat' ? '#397cb8' :
-      tool === 'ball' ? '#ffffff' :
-      markerTypes.has(tool) ? markerColor :
-      strokeColor.value;
-
-    const symbol = {
-      kind:'symbol',
-      type:tool,
-      x:p.x,
-      y:p.y,
-      size:tool === 'ball'
-        ? Math.max(24, Math.round(+symbolSize.value * 0.68))
-        : (tool === 'airbody'
-          ? Math.max(32, Math.round(+symbolSize.value * 0.72))
-          : +symbolSize.value),
-      color:defaultSymbolColor,
-      width:+strokeWidth.value,
+    const symbol = objectModel.createSymbol(tool, p, {
+      symbolSize:+symbolSize.value, strokeWidth:+strokeWidth.value,
+      strokeColor:strokeColor.value, markerColor,
       rotation:['attacker','attackerBall','defender','goalkeeper'].includes(tool)
-        ? initialPlayerRotation(tool, p.x, p.y)
-        : 0
-    };
-
-    if (tool === 'attacker' || tool === 'attackerBall') {
-      symbol.showLabel = false;
-      symbol.attackFormation = '33';
-      symbol.label = 'RM';
-      symbol.labelOffsetX = 0;
-      symbol.labelOffsetY = 0;
-    }
-
-    if (tool === 'defender') {
-      symbol.showLabel = false;
-      symbol.defenseFormation = '321';
-      symbol.label = 'HM';
-      symbol.labelOffsetX = 0;
-      symbol.labelOffsetY = 0;
-    }
+        ? initialPlayerRotation(tool, p.x, p.y) : 0
+    });
 
     objects.push(symbol);
 
@@ -3858,14 +3705,6 @@
     return window.HandballGeometry.sampledCurvePoints(o,steps,offset);
   }
 
-
-  function syncMultiPathExtents(o) {
-    if (!o || !Array.isArray(o.points) || !o.points.length) return;
-    o.x1 = o.points[0].x;
-    o.y1 = o.points[0].y;
-    o.x2 = o.points[o.points.length - 1].x;
-    o.y2 = o.points[o.points.length - 1].y;
-  }
 
   function pointAt(arr, idx) {
     if (idx < 0) return arr[0];
@@ -4950,28 +4789,6 @@
     ctx.restore();
   }
 
-  function objectSupportsLabel(o) {
-    return !!o && (
-      (o.kind === 'symbol' && labelTypes.has(o.type)) ||
-      (o.kind === 'path' && pathTools.has(o.type))
-    );
-  }
-
-  const LABEL_OFFSET_MIN = -50;
-  const LABEL_OFFSET_MAX = 50;
-
-  function clamp(v, min, max) {
-    return Math.max(min, Math.min(max, v));
-  }
-
-  function ensureLabelOffset(o) {
-    if (!o) return;
-    if (!Number.isFinite(+o.labelOffsetX)) o.labelOffsetX = 0;
-    if (!Number.isFinite(+o.labelOffsetY)) o.labelOffsetY = 0;
-    o.labelOffsetX = clamp(Math.round(+o.labelOffsetX), LABEL_OFFSET_MIN, LABEL_OFFSET_MAX);
-    o.labelOffsetY = clamp(Math.round(+o.labelOffsetY), LABEL_OFFSET_MIN, LABEL_OFFSET_MAX);
-  }
-
   function getLabelPosition(o) {
     ensureLabelOffset(o);
     if (o.kind === 'path') {
@@ -5732,7 +5549,7 @@
 
   async function saveProject() {
     const data = {
-      version: 91,
+      version: 92,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -5768,54 +5585,7 @@
         canvas.width = savedCanvasWidth;
         canvas.height = savedCanvasHeight;
 
-        objects=data.objects.map(o => {
-          if (o && o.kind === 'symbol' && o.type === 'attacker') {
-            if (typeof o.showLabel !== 'boolean') o.showLabel = false;
-            if (!['33','24'].includes(o.attackFormation)) o.attackFormation = '33';
-            const valid = attackLabels[o.attackFormation];
-            if (!valid.includes(o.label)) o.label = valid.includes('RM') ? 'RM' : valid[0];
-            ensureLabelOffset(o);
-          }
-
-          if (o && o.kind === 'symbol' && o.type === 'defender') {
-            if (typeof o.showLabel !== 'boolean') o.showLabel = false;
-            if (!['321','60'].includes(o.defenseFormation)) o.defenseFormation = '321';
-            const valid = defenseLabels[o.defenseFormation];
-            if (!valid.includes(o.label)) o.label = valid.includes('HM') ? 'HM' : valid[0];
-            ensureLabelOffset(o);
-          }
-
-          if (o && o.kind === 'symbol' && o.type === 'goalkeeper') {
-            o.showLabel = false;
-          }
-
-          if (o && o.kind === 'path') {
-            if (typeof o.showLabel !== 'boolean') o.showLabel = false;
-            if (typeof o.label !== 'string') o.label = 'A';
-            ensureLabelOffset(o);
-
-            if (isMultiPointPath(o)) {
-              if (!Array.isArray(o.points) || o.points.length < 2) {
-                o.points = [
-                  {x:Number.isFinite(+o.x1) ? +o.x1 : 0, y:Number.isFinite(+o.y1) ? +o.y1 : 0},
-                  {x:Number.isFinite(+o.x2) ? +o.x2 : 0, y:Number.isFinite(+o.y2) ? +o.y2 : 0}
-                ];
-              }
-              syncMultiPathExtents(o);
-            }
-
-            if (isComplexPath(o)) {
-              const dx = o.x2 - o.x1;
-              const dy = o.y2 - o.y1;
-              if (!Number.isFinite(+o.cx1)) o.cx1 = o.x1 + dx * 0.33;
-              if (!Number.isFinite(+o.cy1)) o.cy1 = o.y1 + dy * 0.33;
-              if (!Number.isFinite(+o.cx2)) o.cx2 = o.x1 + dx * 0.67;
-              if (!Number.isFinite(+o.cy2)) o.cy2 = o.y1 + dy * 0.67;
-            }
-          }
-
-          return o;
-        });
+        objects=data.objects.map(objectModel.normalizeLoadedObject);
 
         if (data.layout) {
           layoutSettings = {
@@ -6705,7 +6475,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v91 =====
+  // ===== PWA / Service Worker v92 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -6716,7 +6486,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v91-reload';
+      const reloadKey = 'handballtrainer-sw-v92-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -6735,7 +6505,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v91 registration OK');
+        console.info('[Handballtrainer] Service Worker v92 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

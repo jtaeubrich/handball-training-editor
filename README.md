@@ -182,9 +182,15 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v90)
+## Entwicklung und Regressionstests (v92)
 
 Das objektbezogene Canvas-Rendering liegt in `js/renderer-canvas.js`, das SVG-Rendering einschließlich Spielfeld in `js/renderer-svg.js`. Beide Renderer erhalten ihre benötigten Geometrie- und Beschriftungsfunktionen ausdrücklich vom Editor. Auswahlrahmen, Handles und Bedienlogik bleiben in `index.html`.
+
+`js/object-model.js` verwaltet die Objekttypen, Werkzeugklassifizierung, Beschriftungslisten, Standardwerte für neue Symbole, Pfade und Freihandzeichnungen sowie die bisherige Normalisierung geladener Objekte. Das Modul benötigt keinen DOM-Zugriff. Aktuelle Werkzeugwerte und die vom Spielfeld abhängige Spielerdrehung werden beim Erstellen übergeben. Bestehende Unterschiede zwischen neuen und geladenen Objekten bleiben erhalten; unbekannte Projektfelder werden nicht entfernt.
+
+Die Objektmodelltests vergleichen Symbolvorgaben und die Aufbereitung älterer Objekte mit Referenzwerten aus v91 (Commit `b39e2dc703ea0499235e99277a6670bfebbb54c7`). Weitere Tests prüfen alle 21 Pfadvarianten, Freihandzeichnungen, Laden/Speichern sowie das Anlegen über die Oberfläche mit Rückgängig/Wiederholen.
+
+Die Referenzwerte des Objektmodells lassen sich mit `node tests/capture-object-model-baseline.cjs` aus diesem ursprünglichen Commit erneut erzeugen. Das Skript benötigt dessen lokale Git-Historie und liest keine Vorgaben der aktuellen Implementierung.
 
 Tests ausführen: `npm ci`, `npx playwright install chromium`, danach `npm run test:e2e`. Der Testserver benötigt nur Node.js. GitHub Actions verwendet dieselben Abhängigkeiten aus `package-lock.json`; überholte Testläufe derselben Branch werden durch die bestehende concurrency-Regel abgebrochen.
 

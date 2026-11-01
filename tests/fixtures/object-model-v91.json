@@ -1,0 +1,730 @@
+{
+  "source": "b39e2dc703ea0499235e99277a6670bfebbb54c7",
+  "creations": [
+    {
+      "type": "attacker",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "attacker",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#1976d2",
+        "width": 3,
+        "rotation": 37,
+        "showLabel": false,
+        "attackFormation": "33",
+        "label": "RM",
+        "labelOffsetX": 0,
+        "labelOffsetY": 0
+      }
+    },
+    {
+      "type": "attackerBall",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "attackerBall",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#1976d2",
+        "width": 3,
+        "rotation": 37,
+        "showLabel": false,
+        "attackFormation": "33",
+        "label": "RM",
+        "labelOffsetX": 0,
+        "labelOffsetY": 0
+      }
+    },
+    {
+      "type": "feeder",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "feeder",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#1976d2",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "defender",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "defender",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#d32f2f",
+        "width": 3,
+        "rotation": 37,
+        "showLabel": false,
+        "defenseFormation": "321",
+        "label": "HM",
+        "labelOffsetX": 0,
+        "labelOffsetY": 0
+      }
+    },
+    {
+      "type": "goalkeeper",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "goalkeeper",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#d32f2f",
+        "width": 3,
+        "rotation": 37
+      }
+    },
+    {
+      "type": "ball",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "ball",
+        "x": 120,
+        "y": 150,
+        "size": 34,
+        "color": "#ffffff",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "coach",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "coach",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#123456",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "cone",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "cone",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#f2c500",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "ring",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "ring",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#f2c500",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "disc",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "disc",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#f2c500",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "airbody",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "airbody",
+        "x": 120,
+        "y": 150,
+        "size": 36,
+        "color": "#f2c500",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "bench",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "bench",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#b8874f",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "mat",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "mat",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#4da3d9",
+        "width": 3,
+        "rotation": 0
+      }
+    },
+    {
+      "type": "crashMat",
+      "point": {
+        "x": 120,
+        "y": 150
+      },
+      "settings": {
+        "symbolSize": 50,
+        "strokeWidth": 3,
+        "strokeColor": "#123456",
+        "markerColor": "#f2c500",
+        "freehandColor": "#111111",
+        "rotation": 37
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "crashMat",
+        "x": 120,
+        "y": 150,
+        "size": 50,
+        "color": "#397cb8",
+        "width": 3,
+        "rotation": 0
+      }
+    }
+  ],
+  "normalizations": [
+    {
+      "input": {
+        "kind": "symbol",
+        "type": "attacker",
+        "label": "invalid",
+        "attackFormation": "invalid",
+        "labelOffsetX": 99.8,
+        "labelOffsetY": -99.8
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "attacker",
+        "label": "RM",
+        "attackFormation": "33",
+        "labelOffsetX": 50,
+        "labelOffsetY": -50,
+        "showLabel": false
+      }
+    },
+    {
+      "input": {
+        "kind": "symbol",
+        "type": "attacker",
+        "label": "KR",
+        "attackFormation": "24",
+        "showLabel": true,
+        "labelOffsetX": "12.6",
+        "labelOffsetY": "invalid"
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "attacker",
+        "label": "KR",
+        "attackFormation": "24",
+        "showLabel": true,
+        "labelOffsetX": 13,
+        "labelOffsetY": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "symbol",
+        "type": "defender",
+        "label": "invalid",
+        "defenseFormation": "invalid"
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "defender",
+        "label": "HM",
+        "defenseFormation": "321",
+        "showLabel": false,
+        "labelOffsetX": 0,
+        "labelOffsetY": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "symbol",
+        "type": "defender",
+        "label": "IL",
+        "defenseFormation": "60",
+        "showLabel": true,
+        "labelOffsetX": -12.4,
+        "labelOffsetY": null
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "defender",
+        "label": "IL",
+        "defenseFormation": "60",
+        "showLabel": true,
+        "labelOffsetX": -12,
+        "labelOffsetY": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "symbol",
+        "type": "attackerBall",
+        "label": "custom",
+        "showLabel": true,
+        "extra": "keep"
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "attackerBall",
+        "label": "custom",
+        "showLabel": true,
+        "extra": "keep"
+      }
+    },
+    {
+      "input": {
+        "kind": "symbol",
+        "type": "goalkeeper",
+        "showLabel": true
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "goalkeeper",
+        "showLabel": false
+      }
+    },
+    {
+      "input": {
+        "kind": "symbol",
+        "type": "feeder",
+        "color": "#1976d2",
+        "custom": 123
+      },
+      "expected": {
+        "kind": "symbol",
+        "type": "feeder",
+        "color": "#1976d2",
+        "custom": 123
+      }
+    },
+    {
+      "input": {
+        "kind": "path",
+        "type": "run",
+        "x1": 10,
+        "y1": 20,
+        "x2": 110,
+        "y2": 220,
+        "label": 123,
+        "labelOffsetX": "2.6"
+      },
+      "expected": {
+        "kind": "path",
+        "type": "run",
+        "x1": 10,
+        "y1": 20,
+        "x2": 110,
+        "y2": 220,
+        "label": "A",
+        "labelOffsetX": 3,
+        "showLabel": false,
+        "labelOffsetY": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "path",
+        "type": "complexRun",
+        "x1": 10,
+        "y1": 20,
+        "x2": 110,
+        "y2": 220,
+        "cx1": 77,
+        "cy1": "88",
+        "cx2": "bad"
+      },
+      "expected": {
+        "kind": "path",
+        "type": "complexRun",
+        "x1": 10,
+        "y1": 20,
+        "x2": 110,
+        "y2": 220,
+        "cx1": 77,
+        "cy1": "88",
+        "cx2": 77,
+        "showLabel": false,
+        "label": "A",
+        "labelOffsetX": 0,
+        "labelOffsetY": 0,
+        "cy2": 154
+      }
+    },
+    {
+      "input": {
+        "kind": "path",
+        "type": "passCurve",
+        "x1": 10,
+        "y1": 20,
+        "x2": 110,
+        "y2": 220,
+        "showLabel": true,
+        "label": "custom",
+        "labelOffsetX": -80
+      },
+      "expected": {
+        "kind": "path",
+        "type": "passCurve",
+        "x1": 10,
+        "y1": 20,
+        "x2": 110,
+        "y2": 220,
+        "showLabel": true,
+        "label": "custom",
+        "labelOffsetX": -50,
+        "labelOffsetY": 0,
+        "cx1": 43,
+        "cy1": 86,
+        "cx2": 77,
+        "cy2": 154
+      }
+    },
+    {
+      "input": {
+        "kind": "path",
+        "type": "runMulti",
+        "x1": "10",
+        "y1": "bad",
+        "x2": 110,
+        "y2": 220
+      },
+      "expected": {
+        "kind": "path",
+        "type": "runMulti",
+        "x1": 10,
+        "y1": 0,
+        "x2": 110,
+        "y2": 220,
+        "showLabel": false,
+        "label": "A",
+        "labelOffsetX": 0,
+        "labelOffsetY": 0,
+        "points": [
+          {
+            "x": 10,
+            "y": 0
+          },
+          {
+            "x": 110,
+            "y": 220
+          }
+        ]
+      }
+    },
+    {
+      "input": {
+        "kind": "path",
+        "type": "screenMulti",
+        "x1": 999,
+        "y1": 999,
+        "x2": 999,
+        "y2": 999,
+        "points": [
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 5,
+            "y": 6
+          },
+          {
+            "x": 8,
+            "y": 9
+          }
+        ]
+      },
+      "expected": {
+        "kind": "path",
+        "type": "screenMulti",
+        "x1": 1,
+        "y1": 2,
+        "x2": 8,
+        "y2": 9,
+        "points": [
+          {
+            "x": 1,
+            "y": 2
+          },
+          {
+            "x": 5,
+            "y": 6
+          },
+          {
+            "x": 8,
+            "y": 9
+          }
+        ],
+        "showLabel": false,
+        "label": "A",
+        "labelOffsetX": 0,
+        "labelOffsetY": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "path",
+        "type": "runBallMulti",
+        "points": [
+          {
+            "x": 10,
+            "y": 20
+          }
+        ]
+      },
+      "expected": {
+        "kind": "path",
+        "type": "runBallMulti",
+        "points": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 0,
+            "y": 0
+          }
+        ],
+        "showLabel": false,
+        "label": "A",
+        "labelOffsetX": 0,
+        "labelOffsetY": 0,
+        "x1": 0,
+        "y1": 0,
+        "x2": 0,
+        "y2": 0
+      }
+    },
+    {
+      "input": {
+        "kind": "freehand",
+        "points": [
+          {
+            "x": 1,
+            "y": 2
+          }
+        ],
+        "custom": "untouched"
+      },
+      "expected": {
+        "kind": "freehand",
+        "points": [
+          {
+            "x": 1,
+            "y": 2
+          }
+        ],
+        "custom": "untouched"
+      }
+    },
+    {
+      "input": {
+        "kind": "future",
+        "type": "custom",
+        "extra": {
+          "value": 1
+        }
+      },
+      "expected": {
+        "kind": "future",
+        "type": "custom",
+        "extra": {
+          "value": 1
+        }
+      }
+    },
+    {
+      "input": null,
+      "expected": null
+    }
+  ]
+}

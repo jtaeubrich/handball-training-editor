@@ -143,6 +143,10 @@ Diese Elemente können ebenfalls verschoben, skaliert, eingefärbt und – sowei
 
 ### Speichern und Export
 
+Ab v91 speichert **Projekt speichern** in Browsern mit Dateizugriff (z. B. Chrome/Edge am Computer) direkt in die über **Projekt laden** geöffnete Datei. Falls das nicht möglich ist, öffnet sich ein Speicherdialog mit dem bisherigen Dateinamen und der geöffneten Datei als Startort. Öffnen und Speichern verwenden denselben gemerkten Projektordner; der Downloads-Ordner wird nicht mehr vorgegeben.
+
+Browser ohne diesen Dateizugriff geben beim Laden keinen ursprünglichen Ordner an die Webseite weiter. Hier entscheidet der Browser über den Download-Ordner. Für einen Speicherdialog bei jedem Download die Browser-Einstellung **Vor dem Speichern nachfragen** aktivieren; der Editor kann den ursprünglichen Ordner in diesem Fall nicht vorauswählen.
+
 Unterstützt werden:
 - Projekt speichern als JSON
 - Projekt laden

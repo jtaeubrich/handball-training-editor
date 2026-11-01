@@ -29,7 +29,9 @@ test.beforeEach(async ({ page }) => {
       openHandleName: 'training-test.json',
       writes: [],
       writeCalls: 0,
-      saveAsCalls: 0
+      saveAsCalls: 0,
+      failExistingWrite: false,
+      failSavePicker: false
     };
     window.__fileTestState = state;
 
@@ -45,6 +47,7 @@ test.beforeEach(async ({ page }) => {
       async queryPermission() { return 'granted'; },
       async requestPermission() { return 'granted'; },
       async createWritable() {
+        if (state.failExistingWrite) throw new DOMException('Read only', 'NotAllowedError');
         return {
           async write(blob) {
             state.writeCalls += 1;
@@ -55,10 +58,23 @@ test.beforeEach(async ({ page }) => {
       }
     };
 
-    window.showOpenFilePicker = async () => [handle];
-    window.showSaveFilePicker = async () => {
+    window.showOpenFilePicker = async options => {
+      state.openPickerId = options.id;
+      return [handle];
+    };
+    window.showSaveFilePicker = async options => {
       state.saveAsCalls += 1;
-      return handle;
+      state.savePickerOptions = {
+        id: options.id,
+        suggestedName: options.suggestedName,
+        startsAtLoadedFile: options.startIn === handle,
+        hasStartIn: Object.hasOwn(options, 'startIn')
+      };
+      if (state.failSavePicker) throw new DOMException('Blocked', 'SecurityError');
+      return { ...handle, name:options.suggestedName, createWritable: async () => ({
+        write: async blob => { state.writes.push(await blob.text()); state.writeCalls += 1; },
+        close: async () => {}
+      }) };
     };
   }, emptyProject);
 
@@ -199,6 +215,66 @@ test('loaded project saves back to the same file handle and name', async ({ page
   expect(result.writeCalls).toBe(1);
   expect(result.saveAsCalls).toBe(0);
   expect(result.status).toContain('Projekt gespeichert: training-test.json');
+});
+
+test('save dialog starts at the loaded file if direct saving fails', async ({ page }) => {
+  await page.locator('#jsonLoadBtn').click();
+  await expect(page.locator('#status')).toContainText('Projekt geladen: training-test.json');
+  await page.evaluate(() => { window.__fileTestState.failExistingWrite = true; });
+  await page.locator('#jsonSaveBtn').click();
+  await expect(page.locator('#status')).toHaveText('Projekt gespeichert: training-test.json');
+  const state = await page.evaluate(() => window.__fileTestState);
+  expect(state.savePickerOptions).toEqual({
+    id:state.openPickerId, suggestedName:'training-test.json',
+    startsAtLoadedFile:true, hasStartIn:true
+  });
+  expect(state.writeCalls).toBe(1);
+  // The chosen destination is retained for subsequent saves.
+  await page.locator('#jsonSaveBtn').click();
+  expect(await page.evaluate(() => window.__fileTestState.saveAsCalls)).toBe(1);
+});
+
+test('new project save dialog remembers the project directory without forcing Downloads', async ({ page }) => {
+  await page.locator('#jsonSaveBtn').click();
+  await expect(page.locator('#status')).toContainText('Projekt gespeichert: handball-skizze.json');
+  const options = await page.evaluate(() => window.__fileTestState.savePickerOptions);
+  expect(options.id).toBe('handball-project');
+  expect(options.suggestedName).toBe('handball-skizze.json');
+  expect(options.hasStartIn).toBe(false);
+});
+
+test('save dialog errors do not silently download a different copy', async ({ page }) => {
+  const downloads = [];
+  page.on('download', download => downloads.push(download));
+  await page.evaluate(() => { window.__fileTestState.failSavePicker = true; });
+  await page.locator('#jsonSaveBtn').click();
+  await expect(page.locator('#status')).toContainText('Projekt nicht gespeichert');
+  expect(downloads).toHaveLength(0);
+  expect(await page.evaluate(() => window.__fileTestState.writeCalls)).toBe(0);
+});
+
+test('cancelling the save dialog keeps the project without downloading', async ({ page }) => {
+  const downloads = [];
+  page.on('download', download => downloads.push(download));
+  await page.evaluate(() => {
+    window.showSaveFilePicker = async () => { throw new DOMException('Cancelled','AbortError'); };
+  });
+  await page.locator('#jsonSaveBtn').click();
+  await expect(page.locator('#status')).toHaveText('Speichern abgebrochen');
+  expect(downloads).toHaveLength(0);
+});
+
+test('browser without file picker downloads under the loaded name and explains the location', async ({ page }) => {
+  await page.evaluate(() => { delete window.showSaveFilePicker; });
+  await page.locator('#jsonFile').setInputFiles({
+    name:'abwehrtraining.json', mimeType:'application/json',
+    buffer:Buffer.from(JSON.stringify(emptyProject))
+  });
+  await expect(page.locator('#status')).toContainText('Projekt geladen: abwehrtraining.json');
+  const download = page.waitForEvent('download');
+  await page.locator('#jsonSaveBtn').click();
+  expect((await download).suggestedFilename()).toBe('abwehrtraining.json');
+  await expect(page.locator('#status')).toContainText('Speicherort in den Browser-Einstellungen');
 });
 
 test('feeder uses attacker blue and remains fully filled', async ({ page }) => {

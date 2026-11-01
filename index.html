@@ -966,7 +966,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v90</span>
+    <span>Einstellungen · v91</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1172,7 +1172,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v90</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v91</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -5732,7 +5732,7 @@
 
   async function saveProject() {
     const data = {
-      version: 90,
+      version: 91,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -6705,7 +6705,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v90 =====
+  // ===== PWA / Service Worker v91 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -6716,7 +6716,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v90-reload';
+      const reloadKey = 'handballtrainer-sw-v91-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -6735,7 +6735,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v90 registration OK');
+        console.info('[Handballtrainer] Service Worker v91 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

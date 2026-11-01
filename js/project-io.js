@@ -94,6 +94,8 @@
   } = {}) {
     let currentFileHandle = null;
     let currentFileName = defaultName;
+    // Opening and saving share the browser's remembered project directory.
+    const pickerId = 'handball-project';
 
     return {
       getCurrentName() {
@@ -111,7 +113,8 @@
 
         try {
           const [handle] = await global.showOpenFilePicker({
-            id: 'handball-project-open',
+            id: pickerId,
+            ...(currentFileHandle ? { startIn: currentFileHandle } : {}),
             multiple: false,
             types: [{
               description: 'Handball-Skizzenprojekt',
@@ -149,8 +152,8 @@
         if ('showSaveFilePicker' in global) {
           try {
             const handle = await global.showSaveFilePicker({
-              id: 'handball-project-save',
-              startIn: 'downloads',
+              id: pickerId,
+              ...(currentFileHandle ? { startIn: currentFileHandle } : {}),
               suggestedName: fileName,
               types: [{
                 description: 'Handball-Skizzenprojekt',
@@ -168,13 +171,17 @@
               onStatus('Speichern abgebrochen');
               return { method: 'cancelled', name: fileName };
             }
-            console.warn('Native save dialog unavailable, using browser fallback.', err);
+            console.warn('Projekt konnte nicht im gewählten Speicherort gespeichert werden.', err);
+            onStatus('Projekt nicht gespeichert. Bitte erneut speichern und einen beschreibbaren Speicherort wählen.');
+            return { method: 'failed', name: fileName };
           }
         }
 
-        await saveBlobForUser(blob, fileName, onStatus);
-        onStatus(`Projekt gespeichert: ${fileName}`);
-        return { method: 'fallback', name: fileName };
+        const result = await saveBlobForUser(blob, fileName, onStatus);
+        if (result.method === 'download') {
+          onStatus(`Projekt als Download bereitgestellt: ${fileName}. Speicherort in den Browser-Einstellungen festlegen („Vor dem Speichern nachfragen“).`);
+        }
+        return result;
       },
 
       saveBlobForUser(blob, name) {

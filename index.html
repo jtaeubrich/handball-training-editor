@@ -966,7 +966,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v85</span>
+    <span>Einstellungen · v86</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1172,7 +1172,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v85</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v86</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1784,12 +1784,18 @@
 
 </div>
 
+<script src="./js/project-io.js"></script>
+<script src="./js/export.js"></script>
 <script>
 (() => {
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
 
   const status = document.getElementById('status');
+  const projectFileController = window.HandballProjectIO.createProjectFileController({
+    defaultName:'handball-skizze.json',
+    onStatus: message => { status.textContent = message; }
+  });
   const strokeColor = document.getElementById('strokeColor');
   const strokeWidth = document.getElementById('strokeWidth');
   const symbolSize = document.getElementById('symbolSize');
@@ -7171,57 +7177,35 @@ ${rotateClose}`;
   ${content}
 </svg>`;
 
-    saveBlobForUser(
-      new Blob([svg],{type:'image/svg+xml'}),
-      'handball-skizze.svg'
+    return window.HandballExport.saveSvgText(
+      svg,
+      'handball-skizze.svg',
+      (blob,name) => projectFileController.saveBlobForUser(blob,name)
     );
   }
 
-  function exportPng() {
+  async function exportPng() {
     const tmpSel = selected;
     const tmpSelectedIndices = new Set(selectedIndices);
     clearSelection();
     draw();
 
-    canvas.toBlob(async blob => {
-      if (blob) await saveBlobForUser(blob,'handball-skizze.png');
+    try {
+      await window.HandballExport.saveCanvasPng(
+        canvas,
+        'handball-skizze.png',
+        (blob,name) => projectFileController.saveBlobForUser(blob,name)
+      );
+    } finally {
       selected = tmpSel;
       selectedIndices = tmpSelectedIndices;
       draw();
-    },'image/png');
-  }
-
-  let currentProjectFileHandle = null;
-  let currentProjectFileName = 'handball-skizze.json';
-
-  async function ensureFileHandlePermission(handle) {
-    if (!handle) return false;
-    try {
-      if (!handle.queryPermission || !handle.requestPermission) return true;
-      const options = {mode:'readwrite'};
-      if (await handle.queryPermission(options) === 'granted') return true;
-      return await handle.requestPermission(options) === 'granted';
-    } catch (err) {
-      console.warn('Dateiberechtigung konnte nicht geprüft werden.', err);
-      return false;
     }
-  }
-
-  async function writeBlobToFileHandle(handle, blob) {
-    if (!handle) throw new Error('Kein Dateihandle verfügbar.');
-    if (!await ensureFileHandlePermission(handle)) {
-      const err = new Error('Keine Schreibberechtigung für die geladene Projektdatei.');
-      err.name = 'NotAllowedError';
-      throw err;
-    }
-    const writable = await handle.createWritable();
-    await writable.write(blob);
-    await writable.close();
   }
 
   async function saveProject() {
     const data = {
-      version: 85,
+      version: 86,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -7240,45 +7224,8 @@ ${rotateClose}`;
       {type:'application/json'}
     );
 
-    if (currentProjectFileHandle) {
-      try {
-        await writeBlobToFileHandle(currentProjectFileHandle, blob);
-        currentProjectFileName = currentProjectFileHandle.name || fileName;
-        status.textContent = `Projekt gespeichert: ${currentProjectFileName}`;
-        return;
-      } catch (err) {
-        console.warn('Direktes Speichern in die geladene Datei fehlgeschlagen.', err);
-      }
-    }
 
-    if ('showSaveFilePicker' in window) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          id: 'handball-project-save',
-          startIn: 'downloads',
-          suggestedName: fileName,
-          types: [{
-            description: 'Handball-Skizzenprojekt',
-            accept: {'application/json': ['.json']}
-          }]
-        });
-
-        await writeBlobToFileHandle(handle, blob);
-        currentProjectFileHandle = handle;
-        currentProjectFileName = handle.name || fileName;
-        status.textContent = `Projekt gespeichert: ${currentProjectFileName}`;
-        return;
-      } catch (err) {
-        if (err && err.name === 'AbortError') {
-          status.textContent = 'Speichern abgebrochen';
-          return;
-        }
-        console.warn('Native save dialog unavailable, using browser fallback.', err);
-      }
-    }
-
-    await saveBlobForUser(blob, fileName);
-    status.textContent = `Projekt gespeichert: ${fileName}`;
+    await projectFileController.saveProjectBlob(blob);
   }
 
   function loadProject(file, fileHandle=null) {
@@ -7374,12 +7321,11 @@ ${rotateClose}`;
         history=[clone(objects)];
         redoStack=[];
 
-        currentProjectFileHandle = fileHandle || null;
-        currentProjectFileName = fileHandle?.name || file?.name || 'handball-skizze.json';
+        const loadedProjectName = projectFileController.setLoadedFile(file, fileHandle);
 
         updateProperties();
         draw();
-        status.textContent = `Projekt geladen: ${currentProjectFileName}`;
+        status.textContent = `Projekt geladen: ${loadedProjectName}`;
       } catch(err) {
         alert('Projekt konnte nicht geladen werden: ' + err.message);
       }
@@ -7388,100 +7334,17 @@ ${rotateClose}`;
     reader.readAsText(file);
   }
 
-  function isStandaloneMode() {
-    return !!(
-      window.matchMedia?.('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true
-    );
-  }
-
-  function isIPadLike() {
-    return /iPad/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  }
-
-  function directDownloadBlob(blob,name) {
-    const a=document.createElement('a');
-    const url=URL.createObjectURL(blob);
-    a.href=url;
-    a.download=name;
-    a.rel='noopener';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url),3000);
-  }
-
-  async function saveBlobForUser(blob,name) {
-    // iPad Safari browser mode:
-    // - PNG can be handed to the native share sheet and saved as an image.
-    // - SVG/JSON are handed over explicitly as files; choose "In Dateien sichern".
-    // Installed/standalone mode keeps the existing direct-download behaviour.
-    if (isIPadLike() && !isStandaloneMode() && navigator.share) {
-      try {
-        const ext = (name.split('.').pop() || '').toLowerCase();
-        const isFileOnly = ext === 'svg' || ext === 'json';
-
-        const file = new File([blob], name, {
-          type: blob.type || 'application/octet-stream'
-        });
-
-        const shareData = {
-          files:[file],
-          title: isFileOnly ? `Datei speichern: ${name}` : name
-        };
-
-        if (!navigator.canShare || navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-          status.textContent = isFileOnly
-            ? `${name}: „In Dateien sichern“ wählen`
-            : `${name} zum Speichern bereit`;
-          return;
-        }
-      } catch (err) {
-        if (err && err.name === 'AbortError') {
-          status.textContent = 'Speichern abgebrochen';
-          return;
-        }
-        console.warn('iPad share/save failed, using download fallback.', err);
-      }
-    }
-
-    directDownloadBlob(blob,name);
-  }
-
-  function downloadBlob(blob,name) {
-    return saveBlobForUser(blob,name);
-  }
-
   document.getElementById('svgBtn').addEventListener('click', exportSvg);
   document.getElementById('pngBtn').addEventListener('click', exportPng);
   document.getElementById('jsonSaveBtn').addEventListener('click', saveProject);
 
   document.getElementById('jsonLoadBtn').addEventListener('click', async () => {
-    if ('showOpenFilePicker' in window) {
-      try {
-        const [handle] = await window.showOpenFilePicker({
-          id:'handball-project-open',
-          multiple:false,
-          types:[{
-            description:'Handball-Skizzenprojekt',
-            accept:{'application/json':['.json']}
-          }]
-        });
-        if (!handle) return;
-        const file = await handle.getFile();
-        loadProject(file, handle);
-        return;
-      } catch (err) {
-        if (err && err.name === 'AbortError') {
-          status.textContent = 'Laden abgebrochen';
-          return;
-        }
-        console.warn('Native Dateiauswahl nicht verfügbar, verwende Datei-Upload-Fallback.', err);
-      }
+    const picked = await projectFileController.pickOpenFile();
+    if (picked?.cancelled) return;
+    if (picked?.file) {
+      loadProject(picked.file, picked.handle || null);
+      return;
     }
-
     document.getElementById('jsonFile').click();
   });
 

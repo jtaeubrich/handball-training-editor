@@ -51,6 +51,19 @@
   aside { border-right:1px solid #ccc; }
   .properties { border-left:1px solid #ccc; }
 
+  @media (min-width:701px) {
+    .properties {
+      padding-bottom:190px;
+      scroll-padding-bottom:190px;
+      overscroll-behavior:contain;
+    }
+    #labelProps,
+    .label-offset-wrap,
+    .label-offset-editor {
+      scroll-margin-bottom:190px;
+    }
+  }
+
   aside h3, .properties h3 {
     margin:10px 0 6px; font-size:14px;
   }
@@ -953,7 +966,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v84</span>
+    <span>Einstellungen · v85</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1159,7 +1172,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v84</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v85</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -3468,7 +3481,7 @@
     }
 
     const defaultSymbolColor =
-      (tool === 'attacker' || tool === 'attackerBall') ? '#1976d2' :
+      (tool === 'attacker' || tool === 'attackerBall' || tool === 'feeder') ? '#1976d2' :
       (tool === 'defender' || tool === 'goalkeeper') ? '#d32f2f' :
       tool === 'bench' ? '#b8874f' :
       tool === 'mat' ? '#4da3d9' :
@@ -5924,7 +5937,9 @@
     const allHaveColor = selectedList.length > 0 && selectedList.every(item => typeof item.color === 'string');
     const allMarkers = allSymbols && selectedList.every(item => markerTypes.has(item.type));
     const allPaths = selectedList.length > 0 && selectedList.every(item => item.kind === 'path' && pathTools.has(item.type));
-    const allAttackers = allSymbols && selectedList.every(item => item.type === 'attacker' || item.type === 'attackerBall');
+    const allAttackers = allSymbols && selectedList.every(item =>
+      item.type === 'attacker' || item.type === 'attackerBall' || item.type === 'feeder'
+    );
     const allDefenders = allSymbols && selectedList.every(item => item.type === 'defender' || item.type === 'goalkeeper');
     const allRotatable = allSymbols && selectedList.every(item => rotatableTypes.has(item.type));
 
@@ -6195,7 +6210,7 @@
 
       const targets = selectedObjects();
       if (!targets.length || !targets.every(item =>
-        item.kind === 'symbol' && (item.type === 'attacker' || item.type === 'attackerBall')
+        item.kind === 'symbol' && (item.type === 'attacker' || item.type === 'attackerBall' || item.type === 'feeder')
       )) return;
 
       targets.forEach(item => { item.color = btn.dataset.color; });
@@ -7176,9 +7191,37 @@ ${rotateClose}`;
     },'image/png');
   }
 
+  let currentProjectFileHandle = null;
+  let currentProjectFileName = 'handball-skizze.json';
+
+  async function ensureFileHandlePermission(handle) {
+    if (!handle) return false;
+    try {
+      if (!handle.queryPermission || !handle.requestPermission) return true;
+      const options = {mode:'readwrite'};
+      if (await handle.queryPermission(options) === 'granted') return true;
+      return await handle.requestPermission(options) === 'granted';
+    } catch (err) {
+      console.warn('Dateiberechtigung konnte nicht geprüft werden.', err);
+      return false;
+    }
+  }
+
+  async function writeBlobToFileHandle(handle, blob) {
+    if (!handle) throw new Error('Kein Dateihandle verfügbar.');
+    if (!await ensureFileHandlePermission(handle)) {
+      const err = new Error('Keine Schreibberechtigung für die geladene Projektdatei.');
+      err.name = 'NotAllowedError';
+      throw err;
+    }
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+  }
+
   async function saveProject() {
     const data = {
-      version: 84,
+      version: 85,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(cellCourts[0] || courtSettings),
       layout: {
@@ -7191,14 +7234,23 @@ ${rotateClose}`;
       objects
     };
 
-    const fileName = 'handball-skizze.json';
+    const fileName = currentProjectFileName || 'handball-skizze.json';
     const blob = new Blob(
       [JSON.stringify(data,null,2)],
       {type:'application/json'}
     );
 
-    // Chromium-based browsers can expose a native Save-As dialog via
-    // the File System Access API. "downloads" is a well-known start folder.
+    if (currentProjectFileHandle) {
+      try {
+        await writeBlobToFileHandle(currentProjectFileHandle, blob);
+        currentProjectFileName = currentProjectFileHandle.name || fileName;
+        status.textContent = `Projekt gespeichert: ${currentProjectFileName}`;
+        return;
+      } catch (err) {
+        console.warn('Direktes Speichern in die geladene Datei fehlgeschlagen.', err);
+      }
+    }
+
     if ('showSaveFilePicker' in window) {
       try {
         const handle = await window.showSaveFilePicker({
@@ -7211,29 +7263,25 @@ ${rotateClose}`;
           }]
         });
 
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-
-        status.textContent = `Projekt gespeichert: ${handle.name || fileName}`;
+        await writeBlobToFileHandle(handle, blob);
+        currentProjectFileHandle = handle;
+        currentProjectFileName = handle.name || fileName;
+        status.textContent = `Projekt gespeichert: ${currentProjectFileName}`;
         return;
       } catch (err) {
-        // User cancelled the dialog: do nothing.
         if (err && err.name === 'AbortError') {
           status.textContent = 'Speichern abgebrochen';
           return;
         }
-
-        console.warn('Native save dialog unavailable, using browser download fallback.', err);
+        console.warn('Native save dialog unavailable, using browser fallback.', err);
       }
     }
 
-    // Safari/iPad and other fallback environments.
     await saveBlobForUser(blob, fileName);
-    status.textContent = 'Projekt gespeichert';
+    status.textContent = `Projekt gespeichert: ${fileName}`;
   }
 
-  function loadProject(file) {
+  function loadProject(file, fileHandle=null) {
     const reader=new FileReader();
 
     reader.onload=() => {
@@ -7326,8 +7374,12 @@ ${rotateClose}`;
         history=[clone(objects)];
         redoStack=[];
 
+        currentProjectFileHandle = fileHandle || null;
+        currentProjectFileName = fileHandle?.name || file?.name || 'handball-skizze.json';
+
         updateProperties();
         draw();
+        status.textContent = `Projekt geladen: ${currentProjectFileName}`;
       } catch(err) {
         alert('Projekt konnte nicht geladen werden: ' + err.message);
       }
@@ -7406,12 +7458,36 @@ ${rotateClose}`;
   document.getElementById('pngBtn').addEventListener('click', exportPng);
   document.getElementById('jsonSaveBtn').addEventListener('click', saveProject);
 
-  document.getElementById('jsonLoadBtn').addEventListener('click', () => {
+  document.getElementById('jsonLoadBtn').addEventListener('click', async () => {
+    if ('showOpenFilePicker' in window) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          id:'handball-project-open',
+          multiple:false,
+          types:[{
+            description:'Handball-Skizzenprojekt',
+            accept:{'application/json':['.json']}
+          }]
+        });
+        if (!handle) return;
+        const file = await handle.getFile();
+        loadProject(file, handle);
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          status.textContent = 'Laden abgebrochen';
+          return;
+        }
+        console.warn('Native Dateiauswahl nicht verfügbar, verwende Datei-Upload-Fallback.', err);
+      }
+    }
+
     document.getElementById('jsonFile').click();
   });
 
   document.getElementById('jsonFile').addEventListener('change', e => {
-    if (e.target.files[0]) loadProject(e.target.files[0]);
+    const file = e.target.files[0];
+    if (file) loadProject(file, null);
     e.target.value='';
   });
 

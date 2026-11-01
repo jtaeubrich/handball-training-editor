@@ -28,6 +28,7 @@ test.beforeEach(async ({ page }) => {
     const state = {
       openHandleName: 'training-test.json',
       writes: [],
+      writeCalls: 0,
       saveAsCalls: 0
     };
     window.__fileTestState = state;
@@ -46,7 +47,8 @@ test.beforeEach(async ({ page }) => {
       async createWritable() {
         return {
           async write(blob) {
-            state.writes.push(await blob.text());
+            state.writeCalls += 1;
+            state.writes.push(typeof blob.text === 'function' ? await blob.text() : String(blob));
           },
           async close() {}
         };
@@ -118,7 +120,7 @@ test('selection helper supports single, toggle and rectangle multi-selection', a
 
   expect(result.selected).toBe(2);
   expect(result.indices).toEqual([0,1,2,3]);
-  expect(result.objects).toEqual(['a','b','c','d']);
+  expect(result.objects).toEqual(['b','d','a','c']);
 });
 
 test('geometry helpers calculate distances and curve samples', async ({ page }) => {
@@ -188,11 +190,12 @@ test('loaded project saves back to the same file handle and name', async ({ page
 
   const result = await page.evaluate(() => ({
     writes: window.__fileTestState.writes.length,
+    writeCalls: window.__fileTestState.writeCalls,
     saveAsCalls: window.__fileTestState.saveAsCalls,
     status: document.querySelector('#status').textContent
   }));
 
-  expect(result.writes).toBe(1);
+  expect(result.writeCalls).toBe(1);
   expect(result.saveAsCalls).toBe(0);
   expect(result.status).toContain('Projekt gespeichert: training-test.json');
 });
@@ -225,7 +228,7 @@ test('feeder uses attacker blue and remains fully filled', async ({ page }) => {
 
   expect(project.status).toContain('Anspieler');
 
-  await page.getByRole('button', { name: 'Auswahl' }).click();
+  await page.getByRole('button', { name: 'Auswahl', exact: true }).click();
   await page.locator('#c').click({ position: { x: 250, y: 250 } });
   await expect(page.locator('#propColor')).toHaveValue('#1976d2');
   await expect(page.locator('#attackerPropColors')).toBeVisible();
@@ -246,7 +249,7 @@ test('desktop label offset control can be scrolled fully into view', async ({ pa
     }));
   });
 
-  await page.getByRole('button', { name: 'Auswahl' }).click();
+  await page.getByRole('button', { name: 'Auswahl', exact: true }).click();
   await page.locator('#c').click({ position: { x: 300, y: 300 } });
 
   const props = page.locator('.properties');

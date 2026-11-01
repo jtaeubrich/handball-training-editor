@@ -236,7 +236,8 @@ test('feeder uses attacker blue and remains fully filled', async ({ page }) => {
 });
 
 test('desktop label offset control can be scrolled fully into view', async ({ page }) => {
-  await page.locator('.tool[data-tool="attacker"]').click();
+  await page.locator('#attackGroupBtn').click();
+  await page.locator('#attackToolDropdown .tool[data-tool="attacker"]').click();
   await page.locator('#c').click({ position: { x: 300, y: 300 } });
 
   await expect(page.locator('#labelProps')).toBeVisible();

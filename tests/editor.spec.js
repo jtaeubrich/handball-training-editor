@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 const emptyProject = {
-  version: 87,
+  version: 88,
   canvas: { width: 820, height: 820 },
   court: {
     mode: 'half',
@@ -119,6 +119,65 @@ test('selection helper supports single, toggle and rectangle multi-selection', a
   expect(result.selected).toBe(2);
   expect(result.indices).toEqual([0,1,2,3]);
   expect(result.objects).toEqual(['a','b','c','d']);
+});
+
+test('geometry helpers calculate distances and curve samples', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const g = window.HandballGeometry;
+    const segmentDistance = g.distToSegment(5, 5, 0, 0, 10, 0);
+    const bezier = {
+      x1: 0, y1: 0,
+      cx1: 0, cy1: 10,
+      cx2: 10, cy2: 10,
+      x2: 10, y2: 0
+    };
+    const mid = g.bezierPoint(bezier, 0.5);
+    const multi = g.sampledMultiPathPoints({
+      points: [{x:0,y:0},{x:10,y:10},{x:20,y:0}]
+    }, 6);
+
+    return {
+      segmentDistance,
+      mid,
+      multiCount: multi.length,
+      polylineLength: g.polylineLength([{x:0,y:0},{x:3,y:4},{x:6,y:8}])
+    };
+  });
+
+  expect(result.segmentDistance).toBeCloseTo(5, 5);
+  expect(result.mid.x).toBeCloseTo(5, 5);
+  expect(result.mid.y).toBeCloseTo(7.5, 5);
+  expect(result.multiCount).toBeGreaterThan(6);
+  expect(result.polylineLength).toBeCloseTo(10, 5);
+});
+
+test('geometry hit testing distinguishes hits from misses', async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const g = window.HandballGeometry;
+    const objects = [
+      { kind:'symbol', type:'attacker', x:100, y:100, size:50, rotation:0 },
+      { kind:'symbol', type:'airbody', x:200, y:200, size:36, rotation:0 },
+      { kind:'path', type:'run', x1:300, y1:300, x2:400, y2:300 }
+    ];
+
+    return {
+      attackerHit: g.hitTest(objects, 100, 100, {}),
+      airbodyHit: g.hitTest(objects, 200, 200, {}),
+      pathHit: g.hitTest(objects, 350, 305, {
+        isMultiPointPath: () => false,
+        isComplexPath: () => false
+      }),
+      miss: g.hitTest(objects, 700, 700, {
+        isMultiPointPath: () => false,
+        isComplexPath: () => false
+      })
+    };
+  });
+
+  expect(result.attackerHit).toBe(0);
+  expect(result.airbodyHit).toBe(1);
+  expect(result.pathHit).toBe(2);
+  expect(result.miss).toBe(-1);
 });
 
 test('loaded project saves back to the same file handle and name', async ({ page }) => {

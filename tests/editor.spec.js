@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 const emptyProject = {
-  version: 85,
+  version: 86,
   canvas: { width: 820, height: 820 },
   court: {
     mode: 'half',
@@ -61,6 +61,18 @@ test.beforeEach(async ({ page }) => {
   }, emptyProject);
 
   await page.goto('/');
+});
+
+test('refactored IO and export modules are loaded', async ({ page }) => {
+  const modules = await page.evaluate(() => ({
+    projectIO: typeof window.HandballProjectIO?.createProjectFileController,
+    exportSvg: typeof window.HandballExport?.saveSvgText,
+    exportPng: typeof window.HandballExport?.saveCanvasPng
+  }));
+
+  expect(modules.projectIO).toBe('function');
+  expect(modules.exportSvg).toBe('function');
+  expect(modules.exportPng).toBe('function');
 });
 
 test('loaded project saves back to the same file handle and name', async ({ page }) => {

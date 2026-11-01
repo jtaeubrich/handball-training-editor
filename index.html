@@ -966,7 +966,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v92</span>
+    <span>Einstellungen · v93</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1172,7 +1172,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v92</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v93</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1790,10 +1790,16 @@
 <script src="./js/selection.js"></script>
 <script src="./js/geometry.js"></script>
 <script src="./js/object-model.js"></script>
+<script src="./js/interactions.js"></script>
+<script src="./js/mobile.js"></script>
+<script src="./js/tools.js"></script>
+<script src="./js/renderer-court.js"></script>
 <script src="./js/renderer-canvas.js"></script>
 <script src="./js/renderer-svg.js"></script>
 <script>
 (() => {
+  const editorState = {};
+
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
 
@@ -1830,9 +1836,9 @@
     };
   }
 
-  let courtSettings = makeDefaultCourtSettings();
-  let layoutSettings = { cols:1, rows:1, activeCell:0 };
-  let cellCourts = [courtSettings];
+  editorState.courtSettings = makeDefaultCourtSettings();
+  editorState.layoutSettings = { cols:1, rows:1, activeCell:0 };
+  editorState.cellCourts = [editorState.courtSettings];
 
   // Cells stay larger than the court, but with substantially less unused space.
   // Court sizes themselves remain unchanged, so symbol/court proportions are preserved.
@@ -1842,19 +1848,19 @@
   const STORYBOARD_PAD = 20;
   const STORYBOARD_GAP = 24;
 
-  let canvasZoom = 1;
+  editorState.canvasZoom = 1;
 
   function applyCanvasZoom() {
-    const percent = Math.round(canvasZoom * 100);
-    canvas.style.width = `${canvas.width * canvasZoom}px`;
-    canvas.style.height = `${canvas.height * canvasZoom}px`;
+    const percent = Math.round(editorState.canvasZoom * 100);
+    canvas.style.width = `${canvas.width * editorState.canvasZoom}px`;
+    canvas.style.height = `${canvas.height * editorState.canvasZoom}px`;
     zoomRange.value = String(percent);
     zoomValue.textContent = `${percent}%`;
   }
 
   function setCanvasZoom(percent) {
     const clamped = Math.max(25, Math.min(200, +percent || 100));
-    canvasZoom = clamped / 100;
+    editorState.canvasZoom = clamped / 100;
     applyCanvasZoom();
   }
 
@@ -1865,7 +1871,7 @@
     fullPortrait: { width:720, height:1100 }
   };
 
-  function desiredCanvasSize(mode=courtSettings.mode, rotation=courtSettings.rotation) {
+  function desiredCanvasSize(mode=editorState.courtSettings.mode, rotation=editorState.courtSettings.rotation) {
     if (mode === 'half') return canvasSizes.half;
     if (mode === 'full') {
       const rot = ((+rotation % 360) + 360) % 360;
@@ -1894,19 +1900,19 @@
   }
 
   function layoutCellCount() {
-    return layoutSettings.cols * layoutSettings.rows;
+    return editorState.layoutSettings.cols * editorState.layoutSettings.rows;
   }
 
   function ensureCellCourts() {
     const target = layoutCellCount();
-    while (cellCourts.length < target) {
-      const fallback = cellCourts[cellCourts.length - 1] || makeDefaultCourtSettings();
-      cellCourts.push(cloneCourtSettings(fallback));
+    while (editorState.cellCourts.length < target) {
+      const fallback = editorState.cellCourts[editorState.cellCourts.length - 1] || makeDefaultCourtSettings();
+      editorState.cellCourts.push(cloneCourtSettings(fallback));
     }
-    if (cellCourts.length > target) cellCourts.length = target;
-    if (layoutSettings.activeCell >= target) layoutSettings.activeCell = target - 1;
-    if (layoutSettings.activeCell < 0) layoutSettings.activeCell = 0;
-    courtSettings = cellCourts[layoutSettings.activeCell] || (cellCourts[0] = cloneCourtSettings(makeDefaultCourtSettings()));
+    if (editorState.cellCourts.length > target) editorState.cellCourts.length = target;
+    if (editorState.layoutSettings.activeCell >= target) editorState.layoutSettings.activeCell = target - 1;
+    if (editorState.layoutSettings.activeCell < 0) editorState.layoutSettings.activeCell = 0;
+    editorState.courtSettings = editorState.cellCourts[editorState.layoutSettings.activeCell] || (editorState.cellCourts[0] = cloneCourtSettings(makeDefaultCourtSettings()));
   }
 
   function syncActiveCellSelect() {
@@ -1918,21 +1924,21 @@
       opt.textContent = String(i + 1);
       activeCellSelect.appendChild(opt);
     }
-    activeCellSelect.value = String(layoutSettings.activeCell);
+    activeCellSelect.value = String(editorState.layoutSettings.activeCell);
   }
 
   function syncCourtControlsFromActiveCell() {
     ensureCellCourts();
-    courtMode.value = courtSettings.mode;
-    courtTheme.value = courtSettings.theme;
-    courtRotation.value = String(courtSettings.rotation);
-    sectorOpacity.value = courtSettings.sectorOpacityPercent;
+    courtMode.value = editorState.courtSettings.mode;
+    courtTheme.value = editorState.courtSettings.theme;
+    courtRotation.value = String(editorState.courtSettings.rotation);
+    sectorOpacity.value = editorState.courtSettings.sectorOpacityPercent;
     sectorOpacityValue.textContent = `${sectorOpacity.value}%`;
-    gridVisible.checked = !!courtSettings.gridVisible;
+    gridVisible.checked = !!editorState.courtSettings.gridVisible;
   }
 
   function setActiveCell(index, redraw=true) {
-    layoutSettings.activeCell = Math.max(0, Math.min(layoutCellCount() - 1, +index || 0));
+    editorState.layoutSettings.activeCell = Math.max(0, Math.min(layoutCellCount() - 1, +index || 0));
     ensureCellCourts();
     syncActiveCellSelect();
     syncCourtControlsFromActiveCell();
@@ -1941,9 +1947,9 @@
 
   function storyboardRowHeight(row) {
     ensureCellCourts();
-    const start = row * layoutSettings.cols;
-    const end = start + layoutSettings.cols;
-    const hasFullCourt = cellCourts
+    const start = row * editorState.layoutSettings.cols;
+    const end = start + editorState.layoutSettings.cols;
+    const hasFullCourt = editorState.cellCourts
       .slice(start, end)
       .some(settings => settings && settings.mode === 'full');
 
@@ -1956,10 +1962,10 @@
     let idx = 0;
     let y = STORYBOARD_PAD;
 
-    for (let row = 0; row < layoutSettings.rows; row++) {
+    for (let row = 0; row < editorState.layoutSettings.rows; row++) {
       const rowHeight = storyboardRowHeight(row);
 
-      for (let col = 0; col < layoutSettings.cols; col++) {
+      for (let col = 0; col < editorState.layoutSettings.cols; col++) {
         cells.push({
           index: idx++,
           row,
@@ -1978,19 +1984,19 @@
 
   function desiredStoryboardCanvasSize() {
     let totalRowHeight = 0;
-    for (let row = 0; row < layoutSettings.rows; row++) {
+    for (let row = 0; row < editorState.layoutSettings.rows; row++) {
       totalRowHeight += storyboardRowHeight(row);
     }
 
     return {
       width:
         STORYBOARD_PAD * 2 +
-        layoutSettings.cols * STORYBOARD_CELL_W +
-        Math.max(0, layoutSettings.cols - 1) * STORYBOARD_GAP,
+        editorState.layoutSettings.cols * STORYBOARD_CELL_W +
+        Math.max(0, editorState.layoutSettings.cols - 1) * STORYBOARD_GAP,
       height:
         STORYBOARD_PAD * 2 +
         totalRowHeight +
-        Math.max(0, layoutSettings.rows - 1) * STORYBOARD_GAP
+        Math.max(0, editorState.layoutSettings.rows - 1) * STORYBOARD_GAP
     };
   }
 
@@ -2056,7 +2062,7 @@
     const cells = storyboardCells();
     const cellIndex = cellIndexAtPoint(x, y);
     const cell = cells[cellIndex] || cells[0];
-    const settings = cellCourts[cellIndex] || courtSettings;
+    const settings = editorState.cellCourts[cellIndex] || editorState.courtSettings;
     if (!cell || !settings || settings.mode === 'none') return 0;
 
     const r = cellCourtRect(settings.mode, settings.rotation, cell);
@@ -2103,13 +2109,13 @@
 
     if (oldW === target.width && oldH === target.height) return;
 
-    if (remapObjects && objects.length) {
+    if (remapObjects && editorState.objects.length) {
       // Keep all objects at the same relative position inside the work area.
       // Symbol size, line width and label distance stay unchanged.
       const sx = target.width / oldW;
       const sy = target.height / oldH;
 
-      objects.forEach(o => {
+      editorState.objects.forEach(o => {
         if (o.kind === 'symbol') {
           o.x *= sx;
           o.y *= sy;
@@ -2179,67 +2185,67 @@
     clamp, ensureLabelOffset, syncMultiPathExtents
   } = objectModel;
 
-  let markerColor = '#f2c500';
-  let freehandColor = '#111111';
+  editorState.markerColor = '#f2c500';
+  editorState.freehandColor = '#111111';
 
-  let objects = [];
+  editorState.objects = [];
   const historyManager = window.HandballStateHistory.createHistory({
-    initialObjects: objects,
+    initialObjects: editorState.objects,
     maxEntries: 100
   });
 
-  let tool = 'select';
-  let selected = -1; // primary selection, kept for existing single-object editing logic
-  let selectedIndices = new Set();
-  let drawing = null;
+  editorState.tool = 'select';
+  editorState.selected = -1; // primary selection, kept for existing single-object editing logic
+  editorState.selectedIndices = new Set();
+  editorState.drawing = null;
 
-  let dragging = false;
-  let dragOffset = {x:0,y:0};
-  let groupDragLast = null;
-  let selectionRect = null;
+  editorState.dragging = false;
+  editorState.dragOffset = {x:0,y:0};
+  editorState.groupDragLast = null;
+  editorState.selectionRect = null;
 
-  let draggingEndpoint = null; // 'start' | 'end'
+  editorState.draggingEndpoint = null; // 'start' | 'end'
 
-  let rotating = false;
-  let rotateStartAngle = 0;
-  let rotateStartValue = 0;
+  editorState.rotating = false;
+  editorState.rotateStartAngle = 0;
+  editorState.rotateStartValue = 0;
 
-  let rotatingGroup = false;
-  let groupRotateCenter = null;
-  let groupRotateLastAngle = 0;
+  editorState.rotatingGroup = false;
+  editorState.groupRotateCenter = null;
+  editorState.groupRotateLastAngle = 0;
 
   function clone(v) {
     return JSON.parse(JSON.stringify(v));
   }
 
   function clearSelection() {
-    selected = window.HandballSelection.clear(selectedIndices);
+    editorState.selected = window.HandballSelection.clear(editorState.selectedIndices);
   }
 
   function setSingleSelection(index) {
-    selected = window.HandballSelection.setSingle(selectedIndices, index);
+    editorState.selected = window.HandballSelection.setSingle(editorState.selectedIndices, index);
   }
 
   function toggleSelection(index) {
-    selected = window.HandballSelection.toggle(selectedIndices, selected, index);
+    editorState.selected = window.HandballSelection.toggle(editorState.selectedIndices, editorState.selected, index);
   }
 
   function selectedObjects() {
-    return window.HandballSelection.selectedObjects(selectedIndices, objects);
+    return window.HandballSelection.selectedObjects(editorState.selectedIndices, editorState.objects);
   }
 
   function duplicateSelectedObjects() {
     const result = window.HandballSelection.duplicateSelected(
-      selectedIndices,
-      objects,
+      editorState.selectedIndices,
+      editorState.objects,
       clone
     );
-    selected = result.selected;
+    editorState.selected = result.selected;
     return result.newIndices;
   }
 
   function selectionCount() {
-    return window.HandballSelection.count(selectedIndices);
+    return window.HandballSelection.count(editorState.selectedIndices);
   }
 
   function moveObjectBy(o, dx, dy) {
@@ -2388,7 +2394,7 @@
 
   function rotateActiveCellObjects(oldRotation, newRotation) {
     const cells = storyboardCells();
-    const cell = cells[layoutSettings.activeCell];
+    const cell = cells[editorState.layoutSettings.activeCell];
     if (!cell) return;
 
     let delta = (+newRotation || 0) - (+oldRotation || 0);
@@ -2399,7 +2405,7 @@
     const cx = cell.x + cell.w / 2;
     const cy = cell.y + cell.h / 2;
 
-    objects.forEach(o => {
+    editorState.objects.forEach(o => {
       if (objectBelongsToCell(o, cell)) {
         rotateObjectAround(o, cx, cy, delta);
       }
@@ -2487,13 +2493,13 @@
   }
 
   function commit() {
-    historyManager.commit(objects);
+    historyManager.commit(editorState.objects);
   }
 
   function undo() {
     const state = historyManager.undo();
     if (!state) return;
-    objects = state;
+    editorState.objects = state;
     clearSelection();
     updateProperties();
     draw();
@@ -2502,93 +2508,18 @@
   function redo() {
     const state = historyManager.redo();
     if (!state) return;
-    objects = state;
+    editorState.objects = state;
     clearSelection();
     updateProperties();
     draw();
   }
 
-  function setTool(t, button=null) {
-    if (drawing && isMultiPointPath(drawing) && t !== drawing.type) {
-      drawing = null;
-      lastMultiPathClickTime = 0;
-      lastMultiPathClickPoint = null;
-    }
-
-    tool = t;
-    clearSelection();
-    rotating = false;
-    rotatingGroup = false;
-    groupRotateCenter = null;
-    draggingEndpoint = null;
-
-    document.querySelectorAll('.tool, .tool-group-main, #selectBtn').forEach(b => b.classList.remove('active'));
-    if (button) button.classList.add('active');
-    else if (t === 'select') document.getElementById('selectBtn').classList.add('active');
-
-    if (t === 'attacker' || t === 'attackerBall') {
-      attackGroupSelection = t;
-    }
-    if (t === 'defender' || t === 'goalkeeper') {
-      defenseGroupSelection = t;
-    }
-    if (['cone','ring','disc','airbody','bench','mat','crashMat'].includes(t)) {
-      otherGroupSelection = t;
-    }
-
-    const pathGroupKey = (typeof pathVariantToGroup !== 'undefined') ? pathVariantToGroup[t] : null;
-    if (pathGroupKey && typeof pathGroupSelections !== 'undefined') {
-      pathGroupSelections[pathGroupKey] = t;
-    }
-
-    updateGroupedToolButtons();
-    if (typeof updatePathGroupButtons === 'function') updatePathGroupButtons();
-
-    if (t === 'attacker' || t === 'attackerBall') {
-      attackGroupBtn?.classList.add('active');
-    }
-    if (t === 'defender' || t === 'goalkeeper') {
-      defenseGroupBtn?.classList.add('active');
-    }
-    if (['cone','ring','disc','airbody','bench','mat','crashMat'].includes(t)) {
-      otherGroupBtn?.classList.add('active');
-    }
-    if (typeof pathVariantToGroup !== 'undefined' && pathVariantToGroup[t]) {
-      document.querySelector(`.path-tool-group[data-path-group="${pathVariantToGroup[t]}"] .path-group-main`)?.classList.add('active');
-    }
-
-    status.textContent = t === 'select' ? 'Auswahlmodus' : 'Werkzeug: ' + (typeNames[t] || t);
-
-    const mobileSelectStateBtn = document.getElementById('mobileSelectBtn');
-    if (mobileSelectStateBtn) {
-      mobileSelectStateBtn.classList.toggle('active', t === 'select');
-    }
-
-    canvas.style.cursor = t === 'select'
-      ? 'default'
-      : ((pathTools.has(t) || t === 'freehand') ? 'crosshair' : 'copy');
-
-    markerColorPanel.hidden = !markerTypes.has(t);
-    freehandColorPanel.hidden = t !== 'freehand';
-    updateMarkerSwatches();
-    updateFreehandSwatches();
-
-    updateProperties();
-    draw();
-  }
-
-  document.querySelectorAll('.tool').forEach(btn => {
-    btn.addEventListener('click', () => setTool(btn.dataset.tool, btn));
-  });
-
-
-  // ===== Hilfe / README =====
   const helpBtn = document.getElementById('helpBtn');
   const helpModal = document.getElementById('helpModal');
   const helpCloseBtn = document.getElementById('helpCloseBtn');
   const helpOpenReadmeBtn = document.getElementById('helpOpenReadmeBtn');
   const helpContent = document.getElementById('helpContent');
-  let helpLoaded = false;
+  editorState.helpLoaded = false;
 
   function escapeHtml(value) {
     return String(value)
@@ -2657,7 +2588,7 @@
   }
 
   async function loadHelpReadme() {
-    if (helpLoaded) return;
+    if (editorState.helpLoaded) return;
 
     helpContent.textContent = 'Hilfe wird geladen …';
 
@@ -2667,7 +2598,7 @@
 
       const markdown = await response.text();
       helpContent.innerHTML = renderSimpleMarkdown(markdown);
-      helpLoaded = true;
+      editorState.helpLoaded = true;
     } catch (err) {
       console.warn('README could not be loaded.', err);
       helpContent.innerHTML = `
@@ -2721,24 +2652,24 @@
   document.getElementById('deleteBtn').addEventListener('click', deleteSelected);
 
   courtMode.addEventListener('change', () => {
-    courtSettings.mode = courtMode.value;
+    editorState.courtSettings.mode = courtMode.value;
     resizeCanvasForStoryboard();
     commit();
     draw();
   });
 
   courtTheme.addEventListener('change', () => {
-    courtSettings.theme = courtTheme.value;
+    editorState.courtSettings.theme = courtTheme.value;
     commit();
     draw();
   });
 
   courtRotation.addEventListener('change', () => {
-    const oldRotation = +courtSettings.rotation || 0;
+    const oldRotation = +editorState.courtSettings.rotation || 0;
     const newRotation = +courtRotation.value || 0;
 
     rotateActiveCellObjects(oldRotation, newRotation);
-    courtSettings.rotation = newRotation;
+    editorState.courtSettings.rotation = newRotation;
 
     commit();
     updateProperties();
@@ -2747,8 +2678,8 @@
 
   layoutGrid.addEventListener('change', () => {
     const parsed = parseLayoutValue(layoutGrid.value);
-    layoutSettings.cols = parsed.cols;
-    layoutSettings.rows = parsed.rows;
+    editorState.layoutSettings.cols = parsed.cols;
+    editorState.layoutSettings.rows = parsed.rows;
     ensureCellCourts();
     resizeCanvasForStoryboard();
     syncActiveCellSelect();
@@ -2764,7 +2695,7 @@
   function duplicateActiveCellToNext() {
     ensureCellCourts();
 
-    const sourceIndex = layoutSettings.activeCell;
+    const sourceIndex = editorState.layoutSettings.activeCell;
     const targetIndex = sourceIndex + 1;
 
     if (targetIndex >= layoutCellCount()) {
@@ -2781,7 +2712,7 @@
     const dy = target.y - source.y;
 
     // Copy the complete cell-specific field setup.
-    cellCourts[targetIndex] = cloneCourtSettings(cellCourts[sourceIndex]);
+    editorState.cellCourts[targetIndex] = cloneCourtSettings(editorState.cellCourts[sourceIndex]);
 
     // Copy only objects completely contained in the source cell.
     const sourceRect = {
@@ -2791,7 +2722,7 @@
       y2: source.y + source.h
     };
 
-    const sourceObjects = objects
+    const sourceObjects = editorState.objects
       .map((o, i) => ({o, i}))
       .filter(entry => objectFullyInsideRect(entry.o, sourceRect));
 
@@ -2799,13 +2730,13 @@
     sourceObjects.forEach(entry => {
       const copy = clone(entry.o);
       moveObjectBy(copy, dx, dy);
-      objects.push(copy);
-      newIndices.push(objects.length - 1);
+      editorState.objects.push(copy);
+      newIndices.push(editorState.objects.length - 1);
     });
 
-    selectedIndices.clear();
-    newIndices.forEach(i => selectedIndices.add(i));
-    selected = newIndices.length ? newIndices[newIndices.length - 1] : -1;
+    editorState.selectedIndices.clear();
+    newIndices.forEach(i => editorState.selectedIndices.add(i));
+    editorState.selected = newIndices.length ? newIndices[newIndices.length - 1] : -1;
 
     setActiveCell(targetIndex, false);
     resizeCanvasForStoryboard();
@@ -2823,11 +2754,11 @@
   });
 
   zoomOutBtn.addEventListener('click', () => {
-    setCanvasZoom(Math.round(canvasZoom * 100) - 10);
+    setCanvasZoom(Math.round(editorState.canvasZoom * 100) - 10);
   });
 
   zoomInBtn.addEventListener('click', () => {
-    setCanvasZoom(Math.round(canvasZoom * 100) + 10);
+    setCanvasZoom(Math.round(editorState.canvasZoom * 100) + 10);
   });
 
   zoomValue.addEventListener('dblclick', () => {
@@ -2842,15 +2773,15 @@
   }
 
   sectorOpacity.addEventListener('input', () => {
-    courtSettings.sectorOpacityPercent = +sectorOpacity.value;
-    courtSettings.sectorOpacity = sectorAlphaFromPercent(courtSettings.sectorOpacityPercent);
+    editorState.courtSettings.sectorOpacityPercent = +sectorOpacity.value;
+    editorState.courtSettings.sectorOpacity = sectorAlphaFromPercent(editorState.courtSettings.sectorOpacityPercent);
     sectorOpacityValue.textContent = `${sectorOpacity.value}%`;
     commit();
     draw();
   });
 
   gridVisible.addEventListener('change', () => {
-    courtSettings.gridVisible = gridVisible.checked;
+    editorState.courtSettings.gridVisible = gridVisible.checked;
     commit();
     draw();
   });
@@ -2859,36 +2790,27 @@
     e.preventDefault();
     e.stopPropagation();
 
-    const hasAnything = objects.length > 0 || drawing;
+    const hasAnything = editorState.objects.length > 0 || editorState.drawing;
     if (!hasAnything) return;
 
-    objects = [];
-    drawing = null;
+    editorState.objects = [];
+    editorState.drawing = null;
     clearSelection();
 
-    dragging = false;
-    draggingEndpoint = null;
-    rotating = false;
-    rotatingGroup = false;
-    groupRotateCenter = null;
-    groupDragLast = null;
+    editorState.dragging = false;
+    editorState.draggingEndpoint = null;
+    editorState.rotating = false;
+    editorState.rotatingGroup = false;
+    editorState.groupRotateCenter = null;
+    editorState.groupDragLast = null;
 
-    lastMultiPathClickTime = 0;
-    lastMultiPathClickPoint = null;
+    editorState.lastMultiPathClickTime = 0;
+    editorState.lastMultiPathClickPoint = null;
 
     commit();
     updateProperties();
     draw();
   });
-
-  function pos(e) {
-    const r = canvas.getBoundingClientRect();
-    return {
-      x:(e.clientX-r.left)*canvas.width/r.width,
-      y:(e.clientY-r.top)*canvas.height/r.height
-    };
-  }
-
 
   // ===== Robust touch input for iPhone / iPad =====
   // One finger uses the normal desktop pointer logic.
@@ -2899,763 +2821,7 @@
   // first touch. On larger sketches this became very expensive on mobile Safari.
   // We now keep only one lightweight interaction checkpoint and shallow copies
   // of the history arrays. Pointer state is also cleaned up aggressively after
-  // cancel/lost events so Safari cannot leave the editor in a blocked state.
-
-  const canvasScroller = canvas.closest('main');
-  const touchPointers = new Map();
-
-  let touchGestureActive = false;
-  let touchGestureSuppressEditor = false;
-  let touchGestureStartDistance = 0;
-  let touchGestureStartZoom = 1;
-  let touchGestureAnchorCanvas = null;
-  let touchGestureCheckpoint = null;
-
-  function touchMidpoint() {
-    const pts = Array.from(touchPointers.values());
-    if (pts.length < 2) return null;
-    return {
-      x:(pts[0].x + pts[1].x) / 2,
-      y:(pts[0].y + pts[1].y) / 2
-    };
-  }
-
-  function touchDistance() {
-    const pts = Array.from(touchPointers.values());
-    if (pts.length < 2) return 0;
-    return Math.hypot(
-      pts[1].x - pts[0].x,
-      pts[1].y - pts[0].y
-    );
-  }
-
-  function captureTouchCheckpoint() {
-    // Only the current object state is deep-cloned.
-    // History / redo contain immutable snapshots and can therefore be copied
-    // shallowly. This avoids repeatedly cloning up to 100 full drawings.
-    return {
-      objects:clone(objects),
-      historyState:historyManager.snapshot(),
-      selected,
-      selectedIndices:Array.from(selectedIndices),
-      drawing:drawing ? clone(drawing) : null
-    };
-  }
-
-  function restoreTouchCheckpoint() {
-    if (!touchGestureCheckpoint) return;
-
-    objects = clone(touchGestureCheckpoint.objects);
-    historyManager.restore(touchGestureCheckpoint.historyState);
-
-    selected = touchGestureCheckpoint.selected;
-    selectedIndices = new Set(touchGestureCheckpoint.selectedIndices);
-    drawing = touchGestureCheckpoint.drawing
-      ? clone(touchGestureCheckpoint.drawing)
-      : null;
-
-    dragging = false;
-    draggingEndpoint = null;
-    rotating = false;
-    rotatingGroup = false;
-    groupRotateCenter = null;
-    groupDragLast = null;
-    selectionRect = null;
-
-    updateProperties();
-    draw();
-  }
-
-  function safeCaptureTouchPointer(pointerId) {
-    try {
-      if (!canvas.hasPointerCapture(pointerId)) {
-        canvas.setPointerCapture(pointerId);
-      }
-    } catch (_) {
-      // Safari may reject capture during edge/cancel transitions.
-      // Window-level cleanup below still prevents stale pointer state.
-    }
-  }
-
-  function beginTwoFingerGesture() {
-    const midpoint = touchMidpoint();
-    const distance = touchDistance();
-    if (!midpoint || !distance) return;
-
-    // The first finger has intentionally been allowed to behave exactly like
-    // desktop input. If a second finger appears, revert that partial action and
-    // turn the interaction into a pure viewport gesture.
-    restoreTouchCheckpoint();
-
-    touchGestureActive = true;
-    touchGestureSuppressEditor = true;
-    touchGestureStartDistance = distance;
-    touchGestureStartZoom = canvasZoom;
-
-    const r = canvas.getBoundingClientRect();
-    touchGestureAnchorCanvas = {
-      x:(midpoint.x - r.left) * canvas.width / r.width,
-      y:(midpoint.y - r.top) * canvas.height / r.height
-    };
-
-    // Keep BOTH pointers captured by the canvas. The previous implementation
-    // released capture here; on iOS that could cause pointerup/cancel to be lost
-    // when a finger moved outside the canvas and leave the editor blocked.
-    for (const pointerId of touchPointers.keys()) {
-      safeCaptureTouchPointer(pointerId);
-    }
-
-    status.textContent = 'Zwei-Finger-Zoom / Verschieben';
-  }
-
-  function updateTwoFingerGesture() {
-    if (!touchGestureActive ||
-        touchPointers.size < 2 ||
-        !canvasScroller ||
-        !touchGestureAnchorCanvas) return;
-
-    const midpoint = touchMidpoint();
-    const distance = touchDistance();
-    if (!midpoint || !distance) return;
-
-    const ratio = distance / touchGestureStartDistance;
-    const targetZoom = Math.max(
-      0.25,
-      Math.min(2, touchGestureStartZoom * ratio)
-    );
-
-    setCanvasZoom(targetZoom * 100);
-
-    // Keep the canvas coordinate below the initial two-finger midpoint below
-    // the CURRENT midpoint. This gives pinch zoom and two-finger panning in one
-    // gesture without changing any object coordinates.
-    const r = canvas.getBoundingClientRect();
-    const anchorClientX =
-      r.left + touchGestureAnchorCanvas.x * r.width / canvas.width;
-    const anchorClientY =
-      r.top + touchGestureAnchorCanvas.y * r.height / canvas.height;
-
-    canvasScroller.scrollLeft += anchorClientX - midpoint.x;
-    canvasScroller.scrollTop  += anchorClientY - midpoint.y;
-  }
-
-  function resetTouchGestureState(forceEditorCleanup=false) {
-    touchPointers.clear();
-    touchGestureActive = false;
-    touchGestureSuppressEditor = false;
-    touchGestureStartDistance = 0;
-    touchGestureAnchorCanvas = null;
-    touchGestureCheckpoint = null;
-
-    if (forceEditorCleanup) {
-      dragging = false;
-      draggingEndpoint = null;
-      rotating = false;
-      rotatingGroup = false;
-      groupRotateCenter = null;
-      groupDragLast = null;
-      selectionRect = null;
-
-      // A normal single-point path/freehand interaction that was interrupted by
-      // Safari must not stay half-open and block future taps.
-      if (drawing && !isMultiPointPath(drawing)) {
-        drawing = null;
-      }
-
-      updateProperties();
-      draw();
-    }
-
-    status.textContent = tool === 'select'
-      ? 'Auswahlmodus'
-      : 'Werkzeug: ' + (typeNames[tool] || tool);
-  }
-
-  function finishTouchPointer(e) {
-    if (e.pointerType !== 'touch') return;
-
-    const wasGesture =
-      touchGestureActive || touchGestureSuppressEditor;
-
-    touchPointers.delete(e.pointerId);
-
-    if (touchGestureActive && touchPointers.size < 2) {
-      touchGestureActive = false;
-      touchGestureAnchorCanvas = null;
-    }
-
-    // After a two-finger gesture the remaining finger is intentionally ignored
-    // until it is lifted. This prevents it from suddenly placing/moving an
-    // object when the user finishes the gesture.
-    if (touchPointers.size === 0) {
-      touchGestureSuppressEditor = false;
-      touchGestureCheckpoint = null;
-
-      status.textContent = tool === 'select'
-        ? 'Auswahlmodus'
-        : 'Werkzeug: ' + (typeNames[tool] || tool);
-    }
-
-    if (wasGesture) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    }
-  }
-
-  canvas.addEventListener('pointerdown', e => {
-    if (e.pointerType !== 'touch') return;
-
-    // If Safari ever left a stale touch behind, starting a brand-new physical
-    // interaction must recover automatically instead of blocking the editor.
-    if (!e.isPrimary && touchPointers.size === 0) {
-      resetTouchGestureState(false);
-    }
-
-    if (touchPointers.size === 0) {
-      touchGestureCheckpoint = captureTouchCheckpoint();
-    }
-
-    touchPointers.set(e.pointerId, {
-      x:e.clientX,
-      y:e.clientY
-    });
-
-    safeCaptureTouchPointer(e.pointerId);
-
-    if (touchPointers.size >= 2) {
-      if (!touchGestureActive) beginTwoFingerGesture();
-
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    } else if (touchGestureSuppressEditor) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    }
-  }, {capture:true, passive:false});
-
-  canvas.addEventListener('pointermove', e => {
-    if (e.pointerType !== 'touch' ||
-        !touchPointers.has(e.pointerId)) return;
-
-    touchPointers.set(e.pointerId, {
-      x:e.clientX,
-      y:e.clientY
-    });
-
-    if (touchGestureActive) {
-      updateTwoFingerGesture();
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    } else if (touchGestureSuppressEditor) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-    }
-  }, {capture:true, passive:false});
-
-  canvas.addEventListener(
-    'pointerup',
-    finishTouchPointer,
-    {capture:true, passive:false}
-  );
-
-  canvas.addEventListener(
-    'pointercancel',
-    finishTouchPointer,
-    {capture:true, passive:false}
-  );
-
-  // Safari-specific legacy gesture events can otherwise compete with the
-  // custom pointer-based pinch handler.
-  ['gesturestart','gesturechange','gestureend'].forEach(type => {
-    canvas.addEventListener(type, e => {
-      e.preventDefault();
-    }, {passive:false});
-  });
-
-  // Last-resort cleanup. If iOS cancels/captures a pointer in an unusual order,
-  // never keep a stale pointer map around for the next interaction.
-  window.addEventListener('pointerup', e => {
-    if (e.pointerType !== 'touch') return;
-    if (touchPointers.has(e.pointerId)) {
-      touchPointers.delete(e.pointerId);
-    }
-    if (touchPointers.size === 0 && !touchGestureActive) {
-      touchGestureSuppressEditor = false;
-      touchGestureCheckpoint = null;
-    }
-  });
-
-  window.addEventListener('pointercancel', e => {
-    if (e.pointerType !== 'touch') return;
-    touchPointers.delete(e.pointerId);
-
-    if (touchPointers.size === 0) {
-      resetTouchGestureState(true);
-    }
-  });
-
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden && touchPointers.size) {
-      resetTouchGestureState(true);
-    }
-  });
-
-  window.addEventListener('blur', () => {
-    if (touchPointers.size) {
-      resetTouchGestureState(true);
-    }
-  });
-
-
-  canvas.addEventListener('pointerdown', e => {
-    if (e.pointerType === 'touch' && touchGestureSuppressEditor) return;
-
-    if (!isMultiPointPath(tool)) {
-      canvas.setPointerCapture(e.pointerId);
-    }
-    const p = pos(e);
-    setActiveCell(cellIndexAtPoint(p.x, p.y), false);
-
-    if (tool === 'select') {
-      const endpoint = endpointHandleHit(p.x, p.y);
-      if (endpoint) {
-        draggingEndpoint = endpoint;
-        dragging = false;
-        rotating = false;
-        draw();
-        return;
-      }
-
-      const handleIndex = rotationHandleHit(p.x, p.y);
-
-      if (handleIndex === -2) {
-        const group = getGroupRotationHandle();
-        if (group) {
-          rotatingGroup = true;
-          rotating = false;
-          groupRotateCenter = group.center;
-          groupRotateLastAngle = Math.atan2(
-            p.y - groupRotateCenter.y,
-            p.x - groupRotateCenter.x
-          );
-          draw();
-          return;
-        }
-      }
-
-      if (handleIndex >= 0) {
-        setSingleSelection(handleIndex);
-        const o = objects[selected];
-        rotating = true;
-        rotatingGroup = false;
-        rotateStartAngle = Math.atan2(p.y-o.y, p.x-o.x);
-        rotateStartValue = o.rotation || 0;
-        updateProperties();
-        draw();
-        return;
-      }
-
-      const hit = hitTest(p.x,p.y);
-      const copyModifier = (e.ctrlKey || e.metaKey) && !e.shiftKey;
-      const additive = e.shiftKey || (copyModifier && (hit < 0 || !selectedIndices.has(hit)));
-
-      if (additive) {
-        if (hit >= 0) {
-          toggleSelection(hit);
-        } else {
-          selectionRect = { x1:p.x, y1:p.y, x2:p.x, y2:p.y, additive:true };
-        }
-      } else if (copyModifier && hit >= 0 && selectedIndices.has(hit)) {
-        duplicateSelectedObjects();
-        commit();
-      } else {
-        if (hit >= 0) {
-          // Clicking an already selected member keeps the whole group selected.
-          if (!selectedIndices.has(hit) || selectedIndices.size <= 1) {
-            setSingleSelection(hit);
-          } else {
-            selected = hit;
-          }
-        } else {
-          selectionRect = { x1:p.x, y1:p.y, x2:p.x, y2:p.y, additive:false };
-        }
-      }
-
-      updateProperties();
-
-      if (hit >= 0 && selectedIndices.size > 0 && !additive) {
-        dragging = true;
-        groupDragLast = {x:p.x, y:p.y};
-
-        if (selectedIndices.size === 1) {
-          const o = objects[selected];
-          if (o.kind === 'symbol') {
-            dragOffset = {x:p.x-o.x, y:p.y-o.y};
-          } else {
-            dragOffset = {x:p.x-o.x1, y:p.y-o.y1};
-          }
-        }
-      }
-      draw();
-      return;
-    }
-
-    if (tool === 'freehand') {
-      drawing = objectModel.createFreehand(p, {color:freehandColor, width:+strokeWidth.value});
-      return;
-    }
-
-    if (isMultiPointPath(tool)) {
-      const now = performance.now();
-
-      if (!drawing || drawing.type !== tool || !Array.isArray(drawing.points)) {
-        drawing = objectModel.createPath(tool, p, {width:+strokeWidth.value});
-
-        lastMultiPathClickTime = now;
-        lastMultiPathClickPoint = {x:p.x,y:p.y};
-      } else {
-        const rapidSecondClick =
-          lastMultiPathClickPoint &&
-          (now - lastMultiPathClickTime) <= MULTI_PATH_DOUBLE_CLICK_MS &&
-          Math.hypot(p.x - lastMultiPathClickPoint.x, p.y - lastMultiPathClickPoint.y) <= MULTI_PATH_DOUBLE_CLICK_DISTANCE;
-
-        if (rapidSecondClick) {
-          // The first click of the fast click pair is the final support point.
-          // The second click is used only as the finish trigger.
-          drawing.points[drawing.points.length - 1] = {
-            x:lastMultiPathClickPoint.x,
-            y:lastMultiPathClickPoint.y
-          };
-          syncMultiPathExtents(drawing);
-          finishMultiPath();
-          return;
-        }
-
-        // Ordinary single click: fix the current preview point and create a new preview point.
-        drawing.points[drawing.points.length - 1] = {x:p.x,y:p.y};
-        drawing.points.push({x:p.x,y:p.y});
-        syncMultiPathExtents(drawing);
-
-        lastMultiPathClickTime = now;
-        lastMultiPathClickPoint = {x:p.x,y:p.y};
-      }
-
-      draw();
-      drawObject(ctx, drawing, false);
-      return;
-    }
-
-    if (pathTools.has(tool)) {
-      drawing = objectModel.createPath(tool, p, {width:+strokeWidth.value});
-      return;
-    }
-
-    const symbol = objectModel.createSymbol(tool, p, {
-      symbolSize:+symbolSize.value, strokeWidth:+strokeWidth.value,
-      strokeColor:strokeColor.value, markerColor,
-      rotation:['attacker','attackerBall','defender','goalkeeper'].includes(tool)
-        ? initialPlayerRotation(tool, p.x, p.y) : 0
-    });
-
-    objects.push(symbol);
-
-    setSingleSelection(objects.length - 1);
-    commit();
-    updateProperties();
-    draw();
-  });
-
-  canvas.addEventListener('pointermove', e => {
-    if (e.pointerType === 'touch' && touchGestureSuppressEditor) return;
-
-    const p = pos(e);
-
-    if (rotatingGroup && groupRotateCenter && selectedIndices.size > 1) {
-      const currentAngle = Math.atan2(
-        p.y - groupRotateCenter.y,
-        p.x - groupRotateCenter.x
-      );
-
-      let deltaRad = currentAngle - groupRotateLastAngle;
-      while (deltaRad > Math.PI) deltaRad -= Math.PI * 2;
-      while (deltaRad < -Math.PI) deltaRad += Math.PI * 2;
-
-      const deltaDeg = deltaRad * 180 / Math.PI;
-
-      selectedObjects().forEach(o => {
-        rotateObjectAround(
-          o,
-          groupRotateCenter.x,
-          groupRotateCenter.y,
-          deltaDeg
-        );
-      });
-
-      groupRotateLastAngle = currentAngle;
-      updateProperties(false);
-      draw();
-      return;
-    }
-
-    if (rotating && selected >= 0) {
-      const o = objects[selected];
-      const currentAngle = Math.atan2(p.y-o.y, p.x-o.x);
-      const delta = (currentAngle - rotateStartAngle) * 180 / Math.PI;
-      o.rotation = normalizeAngle(rotateStartValue + delta);
-      updateProperties(false);
-      draw();
-      return;
-    }
-
-    if (drawing) {
-      if (drawing.kind === 'freehand') {
-        const pts = drawing.points;
-        const last = pts[pts.length - 1];
-        if (!last || Math.hypot(p.x-last.x, p.y-last.y) >= 1.5) {
-          pts.push({x:p.x,y:p.y});
-          drawing.x2 = p.x;
-          drawing.y2 = p.y;
-        }
-      } else if (isMultiPointPath(drawing) && Array.isArray(drawing.points)) {
-        drawing.points[drawing.points.length - 1] = {x:p.x,y:p.y};
-        syncMultiPathExtents(drawing);
-      } else {
-        drawing.x2 = p.x;
-        drawing.y2 = p.y;
-
-        if (isComplexPath(drawing)) {
-          const dx = drawing.x2 - drawing.x1;
-          const dy = drawing.y2 - drawing.y1;
-          const len = Math.hypot(dx,dy) || 1;
-          const nx = -dy / len;
-          const ny = dx / len;
-          const bend = Math.min(70, Math.max(28, len * 0.22));
-
-          drawing.cx1 = drawing.x1 + dx * 0.32 + nx * bend;
-          drawing.cy1 = drawing.y1 + dy * 0.32 + ny * bend;
-          drawing.cx2 = drawing.x1 + dx * 0.68 + nx * bend;
-          drawing.cy2 = drawing.y1 + dy * 0.68 + ny * bend;
-        }
-      }
-
-      draw();
-      drawObject(ctx, drawing, false);
-      return;
-    }
-
-    if (selectionRect) {
-      selectionRect.x2 = p.x;
-      selectionRect.y2 = p.y;
-      draw();
-      return;
-    }
-
-    if (draggingEndpoint && selected >= 0) {
-      const o = objects[selected];
-      if (o && o.kind === 'path') {
-        if (String(draggingEndpoint).startsWith('point:') && isMultiPointPath(o) && Array.isArray(o.points)) {
-          const idx = +String(draggingEndpoint).split(':')[1];
-          if (o.points[idx]) {
-            o.points[idx].x = p.x;
-            o.points[idx].y = p.y;
-            syncMultiPathExtents(o);
-          }
-        } else if (draggingEndpoint === 'start') {
-          o.x1 = p.x;
-          o.y1 = p.y;
-        } else if (draggingEndpoint === 'end') {
-          o.x2 = p.x;
-          o.y2 = p.y;
-        } else if (draggingEndpoint === 'control1' && isComplexPath(o)) {
-          o.cx1 = p.x;
-          o.cy1 = p.y;
-        } else if (draggingEndpoint === 'control2' && isComplexPath(o)) {
-          o.cx2 = p.x;
-          o.cy2 = p.y;
-        }
-        draw();
-      }
-      return;
-    }
-
-    if (dragging && selected >= 0) {
-      if (selectedIndices.size > 1) {
-        const last = groupDragLast || p;
-        const dx = p.x - last.x;
-        const dy = p.y - last.y;
-        selectedObjects().forEach(o => moveObjectBy(o, dx, dy));
-        groupDragLast = {x:p.x, y:p.y};
-      } else {
-        const o = objects[selected];
-
-        if (o.kind === 'symbol') {
-          o.x = p.x - dragOffset.x;
-          o.y = p.y - dragOffset.y;
-        } else {
-          const newX1 = p.x - dragOffset.x;
-          const newY1 = p.y - dragOffset.y;
-          const dx = newX1 - o.x1;
-          const dy = newY1 - o.y1;
-          moveObjectBy(o, dx, dy);
-        }
-      }
-      draw();
-    }
-  });
-
-  canvas.addEventListener('pointerup', () => {
-    if (selectionRect) {
-      const r = rectNormalized(selectionRect);
-      const tiny = r.w < 4 && r.h < 4;
-      if (tiny) {
-        if (!selectionRect.additive) clearSelection();
-      } else {
-        const hits = [];
-        objects.forEach((o, i) => {
-          if (objectFullyInsideRect(o, r)) hits.push(i);
-        });
-        selected = window.HandballSelection.applyRectangle(
-          selectedIndices,
-          hits,
-          selectionRect.additive
-        );
-      }
-      selectionRect = null;
-      updateProperties();
-      draw();
-      return;
-    }
-
-    if (draggingEndpoint) {
-      draggingEndpoint = null;
-      commit();
-      updateProperties();
-      draw();
-      return;
-    }
-
-    if (rotatingGroup) {
-      rotatingGroup = false;
-      groupRotateCenter = null;
-      commit();
-      updateProperties();
-      draw();
-      return;
-    }
-
-    if (rotating) {
-      rotating = false;
-      commit();
-      updateProperties();
-      draw();
-      return;
-    }
-
-    if (drawing) {
-      if (drawing.kind === 'freehand') {
-        if (Array.isArray(drawing.points) && drawing.points.length >= 2) {
-          objects.push(drawing);
-          setSingleSelection(objects.length - 1);
-          commit();
-        }
-        drawing = null;
-        updateProperties();
-        draw();
-        return;
-      }
-
-      if (isMultiPointPath(drawing)) {
-          draw();
-        drawObject(ctx, drawing, false);
-        return;
-      }
-
-      const dx = drawing.x2-drawing.x1;
-      const dy = drawing.y2-drawing.y1;
-
-      if (Math.hypot(dx,dy) > 6) {
-        objects.push(drawing);
-        setSingleSelection(objects.length - 1);
-        commit();
-      }
-
-      drawing = null;
-      updateProperties();
-      draw();
-      return;
-    }
-
-    if (dragging) {
-      dragging = false;
-      groupDragLast = null;
-      commit();
-      updateProperties();
-    }
-  });
-
-  canvas.addEventListener('pointercancel', e => {
-    if (e.pointerType === 'touch' && touchGestureSuppressEditor) return;
-
-    selectionRect = null;
-    draggingEndpoint = null;
-    rotating = false;
-    rotatingGroup = false;
-    groupRotateCenter = null;
-    dragging = false;
-    groupDragLast = null;
-
-    // Do not leave an interrupted freehand or ordinary path active.
-    // Multi-point paths are intentionally preserved because they are built
-    // through separate taps and can be continued after an interruption.
-    if (drawing && !isMultiPointPath(drawing)) {
-      drawing = null;
-    }
-
-    updateProperties();
-    draw();
-  });
-
-  window.addEventListener('keydown', e => {
-    if (drawing && isMultiPointPath(drawing)) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        finishMultiPath();
-        return;
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        cancelMultiPath();
-        return;
-      }
-    }
-
-    if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIndices.size > 0) {
-      if (!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
-        e.preventDefault();
-        deleteSelected();
-      }
-    }
-
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-      e.preventDefault();
-      e.shiftKey ? redo() : undo();
-    }
-
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-      e.preventDefault();
-      redo();
-    }
-  });
-
-  function deleteSelected() {
-    if (selectedIndices.size === 0) return;
-    const indices = Array.from(selectedIndices).sort((a,b) => b-a);
-    indices.forEach(i => objects.splice(i,1));
-    clearSelection();
-    commit();
-    updateProperties();
-    draw();
-  }
+  // cancel/lost events so Safari cannot leave the editor in a blocked editorState.
 
   function normalizeAngle(a) {
     return Math.round(((a % 360) + 360) % 360);
@@ -3675,7 +2841,7 @@
   }
 
   function hitTest(x,y) {
-    return window.HandballGeometry.hitTest(objects,x,y,{
+    return window.HandballGeometry.hitTest(editorState.objects,x,y,{
       isMultiPointPath,
       isComplexPath
     });
@@ -3685,26 +2851,21 @@
     return window.HandballGeometry.distToSegment(px,py,x1,y1,x2,y2);
   }
 
-
   function bezierPoint(o,t) {
     return window.HandballGeometry.bezierPoint(o,t);
   }
-
 
   function bezierTangent(o,t) {
     return window.HandballGeometry.bezierTangent(o,t);
   }
 
-
   function distToBezier(px,py,o) {
     return window.HandballGeometry.distToBezier(px,py,o);
   }
 
-
   function sampledCurvePoints(o, steps=36, offset=0) {
     return window.HandballGeometry.sampledCurvePoints(o,steps,offset);
   }
-
 
   function pointAt(arr, idx) {
     if (idx < 0) return arr[0];
@@ -3716,26 +2877,21 @@
     return window.HandballGeometry.catmullRomPoint(p0,p1,p2,p3,t);
   }
 
-
   function sampledMultiPathPoints(o, stepsPerSegment=18) {
     return window.HandballGeometry.sampledMultiPathPoints(o,stepsPerSegment);
   }
-
 
   function offsetSampledPoints(pts, offset=0) {
     return window.HandballGeometry.offsetSampledPoints(pts,offset);
   }
 
-
   function distToPolyline(px,py,pts) {
     return window.HandballGeometry.distToPolyline(px,py,pts);
   }
 
-
   function polylineLength(pts) {
     return window.HandballGeometry.polylineLength(pts);
   }
-
 
   function sampledPathPoints(o, offset=0) {
     if (isMultiPointPath(o)) return offsetSampledPoints(sampledMultiPathPoints(o, 18), offset);
@@ -3757,851 +2913,9 @@
     return {x:pts[midIndex].x, y:pts[midIndex].y, dx:next.x - prev.x, dy:next.y - prev.y};
   }
 
-  function getRotationHandle(o) {
-    const dist = o.size * 1.15;
-    return rotatePoint(o.x, o.y-dist, o.x, o.y, o.rotation || 0);
-  }
-
-  function rotationHandleHit(x,y) {
-    if (selected < 0) return -1;
-
-    const radius = window.matchMedia('(max-width: 700px)').matches ? 20 : 11;
-
-    if (selectedIndices.size > 1) {
-      const group = getGroupRotationHandle();
-      if (!group) return -1;
-      return Math.hypot(x-group.handle.x, y-group.handle.y) <= radius ? -2 : -1;
-    }
-
-    const o = objects[selected];
-    if (o.kind !== 'symbol' || !rotatableTypes.has(o.type)) return -1;
-
-    const h = getRotationHandle(o);
-    return Math.hypot(x-h.x,y-h.y) <= radius ? selected : -1;
-  }
-
-  function endpointHandleHit(x,y) {
-    if (selected < 0 || selectedIndices.size > 1) return null;
-    const o = objects[selected];
-
-    if (!o || o.kind !== 'path') return null;
-
-    const radius = window.matchMedia('(max-width: 700px)').matches ? 18 : 11;
-
-    if (isMultiPointPath(o) && Array.isArray(o.points)) {
-      for (let i=0;i<o.points.length;i++) {
-        const pt = o.points[i];
-        if (Math.hypot(x-pt.x, y-pt.y) <= radius) return 'point:' + i;
-      }
-      return null;
-    }
-
-    if (Math.hypot(x-o.x1, y-o.y1) <= radius) return 'start';
-    if (Math.hypot(x-o.x2, y-o.y2) <= radius) return 'end';
-
-    if (isComplexPath(o)) {
-      if (Math.hypot(x-o.cx1, y-o.cy1) <= radius) return 'control1';
-      if (Math.hypot(x-o.cx2, y-o.cy2) <= radius) return 'control2';
-    }
-
-    return null;
-  }
-
-  const courtThemes = {
-    gray: {
-      floor:'#f7f7f7',
-      line:'#4f4f4f',
-      area:'#9a9a9a',
-      area2:'#d5d5d5',
-      // ordered from right outer sector to left outer sector
-      sector:['#d9e1ec','#b9c6d9','#f0f0f0','#d7d7d7','#aebdd3','#ccd7e6'],
-      goal:'#333333',
-      center:'#8a8a8a'
-    },
-    orange: {
-      floor:'#fff7ed',
-      line:'#8d4d14',
-      area:'#e79a54',
-      area2:'#f3d2b3',
-      sector:['#f9dfc1','#efbf93','#fff1e2','#f7dec7','#e6b07d','#f2d3b5'],
-      goal:'#8a3e0b',
-      center:'#d57a32'
-    },
-    blue: {
-      floor:'#f2f8fd',
-      line:'#000000',
-      area:'#127ebc',
-      area2:'#d7d7d7',
-      sector:['#9ccae5','#7aa7d2','#ececec','#9baecf','#6f95c7','#93c3e1'],
-      goal:'#000000',
-      center:'#5b8fb5'
-    }
-  };
-
-  function courtRect(mode) {
-    const rot = ((courtSettings.rotation % 360) + 360) % 360;
-    const swapped = rot === 90 || rot === 270;
-
-    if (mode === 'full') {
-      // Handball proportions 40 x 20. Fit inside canvas also after rotation.
-      const maxW = canvas.width - 100;
-      const maxH = canvas.height - 100;
-
-      let w = 920, h = 460;
-      if (swapped) {
-        const scale = Math.min(maxW / h, maxH / w, 1);
-        w *= scale;
-        h *= scale;
-      } else {
-        const scale = Math.min(maxW / w, maxH / h, 1);
-        w *= scale;
-        h *= scale;
-      }
-      return { x:(canvas.width-w)/2, y:(canvas.height-h)/2, w, h };
-    }
-
-    // Square half court: rotation does not change its footprint.
-    // Use the larger square canvas efficiently.
-    const s = Math.min(680, canvas.width-120, canvas.height-120);
-    return { x:(canvas.width-s)/2, y:(canvas.height-s)/2, w:s, h:s };
-  }
-
-  function withCourtRotation(c, r, fn) {
-    c.save();
-    const cx = r.x + r.w/2;
-    const cy = r.y + r.h/2;
-    const a = (courtSettings.rotation || 0) * Math.PI / 180;
-    c.translate(cx, cy);
-    c.rotate(a);
-    c.translate(-cx, -cy);
-    fn();
-    c.restore();
-  }
-
-  function drawGoal(c, x, y, width, depth, side, colors) {
-    c.save();
-    c.strokeStyle = colors.goal;
-    c.lineWidth = 4;
-    c.fillStyle = '#ffffff';
-
-    if (side === 'top') {
-      c.fillRect(x-width/2, y-depth, width, depth);
-      c.strokeRect(x-width/2, y-depth, width, depth);
-    } else if (side === 'bottom') {
-      c.fillRect(x-width/2, y, width, depth);
-      c.strokeRect(x-width/2, y, width, depth);
-    } else if (side === 'left') {
-      c.fillRect(x-depth, y-width/2, depth, width);
-      c.strokeRect(x-depth, y-width/2, depth, width);
-    } else {
-      c.fillRect(x, y-width/2, depth, width);
-      c.strokeRect(x, y-width/2, depth, width);
-    }
-    c.restore();
-  }
-
-  function drawHalfCourt(c, r, colors) {
-    withCourtRotation(c, r, () => {
-      c.save();
-
-      c.fillStyle = colors.floor;
-      c.fillRect(r.x, r.y, r.w, r.h);
-
-      const cx = r.x + r.w / 2;
-      const goalY = r.y;
-      const scale = r.w / 20;   // half field = 20 x 20 m
-      const goalW = 2 * scale;  // existing goal drawing stays unchanged
-      const six = 6 * scale;
-      const nine = 9 * scale;
-      const segHalf = 1.5 * scale; // 3 m straight section, centered
-
-      // Tactical sectors
-      const sectorColors = [
-        colors.sector[0],
-        colors.sector[1],
-        colors.sector[2],
-        colors.sector[3],
-        colors.sector[4],
-        colors.sector[5]
-      ];
-
-      const totalAngle = Math.PI;
-      const baseStep = totalAngle / 6;
-      const outerStep = baseStep * 1.05;
-      const middleStep = baseStep * 0.80;
-      const adjacentStep = (totalAngle - 2 * outerStep - 2 * middleStep) / 2;
-      const sectorSteps = [outerStep, adjacentStep, middleStep, middleStep, adjacentStep, outerStep];
-      const radius = Math.hypot(r.w / 2, r.h) + 4;
-
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-      c.globalAlpha = courtSettings.sectorOpacity;
-
-      let angleCursor = 0;
-      for (let i = 0; i < 6; i++) {
-        const a1 = angleCursor;
-        const a2 = angleCursor + sectorSteps[i];
-        c.fillStyle = sectorColors[i];
-        c.beginPath();
-        c.moveTo(cx, goalY);
-        c.arc(cx, goalY, radius, a1, a2, false);
-        c.closePath();
-        c.fill();
-        angleCursor = a2;
-      }
-      c.restore();
-
-      // Colored 6-9m band (with 3m straight segment).
-      // Clip it to the actual 20 x 20 m court so it never extends beyond
-      // the side lines.
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-
-      c.fillStyle = colors.area2;
-      c.globalAlpha = 0.55;
-
-      c.beginPath();
-      // Outer 9m contour
-      c.moveTo(cx - segHalf - nine, goalY);
-      c.arc(cx - segHalf, goalY, nine, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + nine);
-      c.arc(cx + segHalf, goalY, nine, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + nine, goalY);
-      c.closePath();
-
-      // Inner 6m contour as hole
-      c.moveTo(cx - segHalf - six, goalY);
-      c.arc(cx - segHalf, goalY, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + six);
-      c.arc(cx + segHalf, goalY, six, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + six, goalY);
-      c.lineTo(cx - segHalf - six, goalY);
-      c.closePath();
-
-      c.fill('evenodd');
-      c.restore();
-
-      // Goal area fill (0-6 m)
-      c.fillStyle = colors.area;
-      c.beginPath();
-      c.moveTo(cx - segHalf - six, goalY);
-      c.arc(cx - segHalf, goalY, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + six);
-      c.arc(cx + segHalf, goalY, six, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + six, goalY);
-      c.lineTo(cx - segHalf - six, goalY);
-      c.closePath();
-      c.fill();
-
-      // Field border
-      c.strokeStyle = colors.line;
-      c.lineWidth = 3;
-      c.strokeRect(r.x, r.y, r.w, r.h);
-
-      // 6 m line
-      c.beginPath();
-      c.moveTo(cx - segHalf - six, goalY);
-      c.arc(cx - segHalf, goalY, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + six);
-      c.arc(cx + segHalf, goalY, six, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + six, goalY);
-      c.stroke();
-
-      // 9 m dashed line, clipped exactly at the field boundary.
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-
-      c.setLineDash([10, 8]);
-      c.lineWidth = 2.5;
-      c.beginPath();
-      c.moveTo(cx - segHalf - nine, goalY);
-      c.arc(cx - segHalf, goalY, nine, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + nine);
-      c.arc(cx + segHalf, goalY, nine, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + nine, goalY);
-      c.stroke();
-      c.setLineDash([]);
-      c.restore();
-
-      // 7 m and 4 m marks
-      c.lineWidth = 3;
-      const mark7 = goalY + 7 * scale;
-      const mark4 = goalY + 4 * scale;
-      c.beginPath();
-      c.moveTo(cx - 12, mark7);
-      c.lineTo(cx + 12, mark7);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(cx - 7, mark4);
-      c.lineTo(cx + 7, mark4);
-      c.stroke();
-
-      // Goal
-      drawGoal(c, cx, goalY, goalW, 18, 'top', colors);
-
-      c.restore();
-    });
-  }
-
-  function drawFullCourt(c, r, colors) {
-    withCourtRotation(c, r, () => {
-      c.save();
-
-      c.fillStyle = colors.floor;
-      c.fillRect(r.x, r.y, r.w, r.h);
-
-      const scale = r.h / 20;   // full field = 40 x 20 m
-      const left = r.x;
-      const right = r.x + r.w;
-      const cy = r.y + r.h / 2;
-      const centerX = r.x + r.w / 2;
-      const goalW = 2 * scale;  // existing goal drawing stays unchanged
-      const six = 6 * scale;
-      const nine = 9 * scale;
-      const segHalf = 1.5 * scale; // 3 m straight section, centered
-
-      // Colored 6-9m bands, clipped to the 40 x 20 m court.
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-
-      c.fillStyle = colors.area2;
-      c.globalAlpha = 0.55;
-
-      // Left 6-9m band
-      c.beginPath();
-      c.moveTo(left, cy - segHalf - nine);
-      c.arc(left, cy - segHalf, nine, -Math.PI / 2, 0, false);
-      c.lineTo(left + nine, cy + segHalf);
-      c.arc(left, cy + segHalf, nine, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + nine);
-      c.closePath();
-
-      c.moveTo(left, cy - segHalf - six);
-      c.arc(left, cy - segHalf, six, -Math.PI / 2, 0, false);
-      c.lineTo(left + six, cy + segHalf);
-      c.arc(left, cy + segHalf, six, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + six);
-      c.lineTo(left, cy - segHalf - six);
-      c.closePath();
-      c.fill('evenodd');
-
-      // Right 6-9m band
-      c.beginPath();
-      c.moveTo(right, cy - segHalf - nine);
-      c.arc(right, cy - segHalf, nine, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - nine, cy + segHalf);
-      c.arc(right, cy + segHalf, nine, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + nine);
-      c.closePath();
-
-      c.moveTo(right, cy - segHalf - six);
-      c.arc(right, cy - segHalf, six, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - six, cy + segHalf);
-      c.arc(right, cy + segHalf, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + six);
-      c.lineTo(right, cy - segHalf - six);
-      c.closePath();
-      c.fill('evenodd');
-
-      c.restore();
-
-      // Filled goal areas
-      c.fillStyle = colors.area;
-
-      // Left goal area
-      c.beginPath();
-      c.moveTo(left, cy - segHalf - six);
-      c.arc(left, cy - segHalf, six, -Math.PI / 2, 0, false);
-      c.lineTo(left + six, cy + segHalf);
-      c.arc(left, cy + segHalf, six, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + six);
-      c.closePath();
-      c.fill();
-
-      // Right goal area
-      c.beginPath();
-      c.moveTo(right, cy - segHalf - six);
-      c.arc(right, cy - segHalf, six, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - six, cy + segHalf);
-      c.arc(right, cy + segHalf, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + six);
-      c.closePath();
-      c.fill();
-
-      // Field border
-      c.strokeStyle = colors.line;
-      c.lineWidth = 3;
-      c.strokeRect(r.x, r.y, r.w, r.h);
-
-      // Centre line
-      c.beginPath();
-      c.moveTo(centerX, r.y);
-      c.lineTo(centerX, r.y + r.h);
-      c.stroke();
-
-      // Centre / throw-off circle
-      c.fillStyle = colors.area2;
-      c.beginPath();
-      c.arc(centerX, cy, 2 * scale, 0, Math.PI * 2);
-      c.fill();
-      c.strokeStyle = colors.center;
-      c.lineWidth = 3;
-      c.stroke();
-
-      // 6 m lines
-      c.strokeStyle = colors.line;
-      c.lineWidth = 3;
-
-      c.beginPath();
-      c.moveTo(left, cy - segHalf - six);
-      c.arc(left, cy - segHalf, six, -Math.PI / 2, 0, false);
-      c.lineTo(left + six, cy + segHalf);
-      c.arc(left, cy + segHalf, six, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + six);
-      c.stroke();
-
-      c.beginPath();
-      c.moveTo(right, cy - segHalf - six);
-      c.arc(right, cy - segHalf, six, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - six, cy + segHalf);
-      c.arc(right, cy + segHalf, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + six);
-      c.stroke();
-
-      // 9 m dashed lines, clipped exactly at the side lines.
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-
-      c.setLineDash([10, 8]);
-      c.lineWidth = 2.5;
-
-      c.beginPath();
-      c.moveTo(left, cy - segHalf - nine);
-      c.arc(left, cy - segHalf, nine, -Math.PI / 2, 0, false);
-      c.lineTo(left + nine, cy + segHalf);
-      c.arc(left, cy + segHalf, nine, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + nine);
-      c.stroke();
-
-      c.beginPath();
-      c.moveTo(right, cy - segHalf - nine);
-      c.arc(right, cy - segHalf, nine, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - nine, cy + segHalf);
-      c.arc(right, cy + segHalf, nine, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + nine);
-      c.stroke();
-
-      c.setLineDash([]);
-      c.restore();
-
-      // 7 m and 4 m marks
-      c.lineWidth = 3;
-      c.beginPath();
-      c.moveTo(left + 7 * scale, cy - 12);
-      c.lineTo(left + 7 * scale, cy + 12);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(right - 7 * scale, cy - 12);
-      c.lineTo(right - 7 * scale, cy + 12);
-      c.stroke();
-
-      c.beginPath();
-      c.moveTo(left + 4 * scale, cy - 7);
-      c.lineTo(left + 4 * scale, cy + 7);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(right - 4 * scale, cy - 7);
-      c.lineTo(right - 4 * scale, cy + 7);
-      c.stroke();
-
-      // Goals
-      drawGoal(c, left, cy, goalW, 18, 'left', colors);
-      drawGoal(c, right, cy, goalW, 18, 'right', colors);
-
-      c.restore();
-    });
-  }
-
-  function drawCourt(c) {
-    if (courtSettings.mode === 'none') return;
-    const colors = courtThemes[courtSettings.theme] || courtThemes.gray;
-    const r = courtRect(courtSettings.mode);
-    if (courtSettings.mode === 'half') drawHalfCourt(c,r,colors);
-    else drawFullCourt(c,r,colors);
-  }
-
-  function grid() {
-    if (!courtSettings.gridVisible) return;
-    ctx.save();
-    ctx.strokeStyle='#ececec';
-    ctx.lineWidth=1;
-
-    for(let x=25; x<canvas.width; x+=25) {
-      ctx.beginPath();
-      ctx.moveTo(x,0);
-      ctx.lineTo(x,canvas.height);
-      ctx.stroke();
-    }
-
-    for(let y=25; y<canvas.height; y+=25) {
-      ctx.beginPath();
-      ctx.moveTo(0,y);
-      ctx.lineTo(canvas.width,y);
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  }
-
-  function withCourtRotationFor(c, r, settings, fn) {
-    c.save();
-    const cx = r.x + r.w / 2;
-    const cy = r.y + r.h / 2;
-    const a = ((settings.rotation || 0) * Math.PI) / 180;
-    c.translate(cx, cy);
-    c.rotate(a);
-    c.translate(-cx, -cy);
-    fn();
-    c.restore();
-  }
-
-  function drawHalfCourtInBounds(c, bounds, colors, settings) {
-    const r = cellCourtRect('half', settings.rotation, bounds);
-    withCourtRotationFor(c, r, settings, () => {
-      c.save();
-      c.fillStyle = colors.floor;
-      c.fillRect(r.x, r.y, r.w, r.h);
-      const cx = r.x + r.w / 2;
-      const goalY = r.y;
-      const scale = r.w / 20;
-      const goalW = 2 * scale;
-      const six = 6 * scale;
-      const nine = 9 * scale;
-      const segHalf = 1.5 * scale;
-      const totalAngle = Math.PI;
-      const baseStep = totalAngle / 6;
-      const outerStep = baseStep * 1.05;
-      const middleStep = baseStep * 0.80;
-      const adjacentStep = (totalAngle - 2 * outerStep - 2 * middleStep) / 2;
-      const sectorSteps = [outerStep, adjacentStep, middleStep, middleStep, adjacentStep, outerStep];
-      const radius = Math.hypot(r.w / 2, r.h) + 4;
-
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-      c.globalAlpha = settings.sectorOpacity;
-      let angleCursor = 0;
-      for (let i = 0; i < 6; i++) {
-        const a1 = angleCursor;
-        const a2 = angleCursor + sectorSteps[i];
-        c.fillStyle = colors.sector[i];
-        c.beginPath();
-        c.moveTo(cx, goalY);
-        c.arc(cx, goalY, radius, a1, a2, false);
-        c.closePath();
-        c.fill();
-        angleCursor = a2;
-      }
-      c.restore();
-
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-      c.fillStyle = colors.area2;
-      c.globalAlpha = 0.55;
-      c.beginPath();
-      c.moveTo(cx - segHalf - nine, goalY);
-      c.arc(cx - segHalf, goalY, nine, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + nine);
-      c.arc(cx + segHalf, goalY, nine, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + nine, goalY);
-      c.closePath();
-      c.moveTo(cx - segHalf - six, goalY);
-      c.arc(cx - segHalf, goalY, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + six);
-      c.arc(cx + segHalf, goalY, six, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + six, goalY);
-      c.lineTo(cx - segHalf - six, goalY);
-      c.closePath();
-      c.fill('evenodd');
-      c.restore();
-
-      c.fillStyle = colors.area;
-      c.beginPath();
-      c.moveTo(cx - segHalf - six, goalY);
-      c.arc(cx - segHalf, goalY, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + six);
-      c.arc(cx + segHalf, goalY, six, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + six, goalY);
-      c.lineTo(cx - segHalf - six, goalY);
-      c.closePath();
-      c.fill();
-
-      c.strokeStyle = colors.line;
-      c.lineWidth = 2.5;
-      c.strokeRect(r.x, r.y, r.w, r.h);
-      c.beginPath();
-      c.moveTo(cx - segHalf - six, goalY);
-      c.arc(cx - segHalf, goalY, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + six);
-      c.arc(cx + segHalf, goalY, six, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + six, goalY);
-      c.stroke();
-
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-      c.setLineDash([10, 8]);
-      c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(cx - segHalf - nine, goalY);
-      c.arc(cx - segHalf, goalY, nine, Math.PI, Math.PI / 2, true);
-      c.lineTo(cx + segHalf, goalY + nine);
-      c.arc(cx + segHalf, goalY, nine, Math.PI / 2, 0, true);
-      c.lineTo(cx + segHalf + nine, goalY);
-      c.stroke();
-      c.setLineDash([]);
-      c.restore();
-
-      c.lineWidth = 2.5;
-      const mark7 = goalY + 7 * scale;
-      const mark4 = goalY + 4 * scale;
-      c.beginPath();
-      c.moveTo(cx - 8, mark7);
-      c.lineTo(cx + 8, mark7);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(cx - 5, mark4);
-      c.lineTo(cx + 5, mark4);
-      c.stroke();
-      drawGoal(c, cx, goalY, goalW, 14, 'top', colors);
-      c.restore();
-    });
-  }
-
-  function drawFullCourtInBounds(c, bounds, colors, settings) {
-    const r = cellCourtRect('full', settings.rotation, bounds);
-    withCourtRotationFor(c, r, settings, () => {
-      c.save();
-      c.fillStyle = colors.floor;
-      c.fillRect(r.x, r.y, r.w, r.h);
-      const scale = r.h / 20;
-      const left = r.x;
-      const right = r.x + r.w;
-      const cy = r.y + r.h / 2;
-      const centerX = r.x + r.w / 2;
-      const goalW = 2 * scale;
-      const six = 6 * scale;
-      const nine = 9 * scale;
-      const segHalf = 1.5 * scale;
-
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-      c.fillStyle = colors.area2;
-      c.globalAlpha = 0.55;
-
-      c.beginPath();
-      c.moveTo(left, cy - segHalf - nine);
-      c.arc(left, cy - segHalf, nine, -Math.PI / 2, 0, false);
-      c.lineTo(left + nine, cy + segHalf);
-      c.arc(left, cy + segHalf, nine, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + nine);
-      c.closePath();
-      c.moveTo(left, cy - segHalf - six);
-      c.arc(left, cy - segHalf, six, -Math.PI / 2, 0, false);
-      c.lineTo(left + six, cy + segHalf);
-      c.arc(left, cy + segHalf, six, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + six);
-      c.lineTo(left, cy - segHalf - six);
-      c.closePath();
-      c.fill('evenodd');
-
-      c.beginPath();
-      c.moveTo(right, cy - segHalf - nine);
-      c.arc(right, cy - segHalf, nine, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - nine, cy + segHalf);
-      c.arc(right, cy + segHalf, nine, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + nine);
-      c.closePath();
-      c.moveTo(right, cy - segHalf - six);
-      c.arc(right, cy - segHalf, six, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - six, cy + segHalf);
-      c.arc(right, cy + segHalf, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + six);
-      c.lineTo(right, cy - segHalf - six);
-      c.closePath();
-      c.fill('evenodd');
-      c.restore();
-
-      c.fillStyle = colors.area;
-      c.beginPath();
-      c.moveTo(left, cy - segHalf - six);
-      c.arc(left, cy - segHalf, six, -Math.PI / 2, 0, false);
-      c.lineTo(left + six, cy + segHalf);
-      c.arc(left, cy + segHalf, six, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + six);
-      c.closePath();
-      c.fill();
-
-      c.beginPath();
-      c.moveTo(right, cy - segHalf - six);
-      c.arc(right, cy - segHalf, six, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - six, cy + segHalf);
-      c.arc(right, cy + segHalf, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + six);
-      c.closePath();
-      c.fill();
-
-      c.strokeStyle = colors.line;
-      c.lineWidth = 2.5;
-      c.strokeRect(r.x, r.y, r.w, r.h);
-      c.beginPath();
-      c.moveTo(centerX, r.y);
-      c.lineTo(centerX, r.y + r.h);
-      c.stroke();
-      c.fillStyle = colors.area2;
-      c.beginPath();
-      c.arc(centerX, cy, 2 * scale, 0, Math.PI * 2);
-      c.fill();
-      c.strokeStyle = colors.center;
-      c.stroke();
-      c.strokeStyle = colors.line;
-
-      c.beginPath();
-      c.moveTo(left, cy - segHalf - six);
-      c.arc(left, cy - segHalf, six, -Math.PI / 2, 0, false);
-      c.lineTo(left + six, cy + segHalf);
-      c.arc(left, cy + segHalf, six, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + six);
-      c.stroke();
-
-      c.beginPath();
-      c.moveTo(right, cy - segHalf - six);
-      c.arc(right, cy - segHalf, six, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - six, cy + segHalf);
-      c.arc(right, cy + segHalf, six, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + six);
-      c.stroke();
-
-      c.save();
-      c.beginPath();
-      c.rect(r.x, r.y, r.w, r.h);
-      c.clip();
-      c.setLineDash([10, 8]);
-      c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(left, cy - segHalf - nine);
-      c.arc(left, cy - segHalf, nine, -Math.PI / 2, 0, false);
-      c.lineTo(left + nine, cy + segHalf);
-      c.arc(left, cy + segHalf, nine, 0, Math.PI / 2, false);
-      c.lineTo(left, cy + segHalf + nine);
-      c.stroke();
-
-      c.beginPath();
-      c.moveTo(right, cy - segHalf - nine);
-      c.arc(right, cy - segHalf, nine, -Math.PI / 2, Math.PI, true);
-      c.lineTo(right - nine, cy + segHalf);
-      c.arc(right, cy + segHalf, nine, Math.PI, Math.PI / 2, true);
-      c.lineTo(right, cy + segHalf + nine);
-      c.stroke();
-      c.setLineDash([]);
-      c.restore();
-
-      c.lineWidth = 2.5;
-      c.beginPath();
-      c.moveTo(left + 7 * scale, cy - 8);
-      c.lineTo(left + 7 * scale, cy + 8);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(right - 7 * scale, cy - 8);
-      c.lineTo(right - 7 * scale, cy + 8);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(left + 4 * scale, cy - 5);
-      c.lineTo(left + 4 * scale, cy + 5);
-      c.stroke();
-      c.beginPath();
-      c.moveTo(right - 4 * scale, cy - 5);
-      c.lineTo(right - 4 * scale, cy + 5);
-      c.stroke();
-      drawGoal(c, left, cy, goalW, 14, 'left', colors);
-      drawGoal(c, right, cy, goalW, 14, 'right', colors);
-      c.restore();
-    });
-  }
-
-  function drawGridInBounds(c, bounds) {
-    c.save();
-    c.beginPath();
-    c.rect(bounds.x, bounds.y, bounds.w, bounds.h);
-    c.clip();
-    c.strokeStyle = '#ececec';
-    c.lineWidth = 1;
-    for (let x = bounds.x + 25; x < bounds.x + bounds.w; x += 25) {
-      c.beginPath();
-      c.moveTo(x, bounds.y);
-      c.lineTo(x, bounds.y + bounds.h);
-      c.stroke();
-    }
-    for (let y = bounds.y + 25; y < bounds.y + bounds.h; y += 25) {
-      c.beginPath();
-      c.moveTo(bounds.x, y);
-      c.lineTo(bounds.x + bounds.w, y);
-      c.stroke();
-    }
-    c.restore();
-  }
-
-  function drawStoryboardCourts(c) {
-    const cells = storyboardCells();
-    cells.forEach(cell => {
-      const settings = cellCourts[cell.index] || makeDefaultCourtSettings();
-      c.save();
-      c.fillStyle = '#ffffff';
-      c.fillRect(cell.x, cell.y, cell.w, cell.h);
-      if (settings.mode !== 'none') {
-        const colors = courtThemes[settings.theme] || courtThemes.gray;
-        if (settings.mode === 'half') drawHalfCourtInBounds(c, cell, colors, settings);
-        else drawFullCourtInBounds(c, cell, colors, settings);
-      }
-      if (settings.gridVisible) drawGridInBounds(c, cell);
-
-      const showCellFrame = layoutCellCount() > 1;
-      if (showCellFrame) {
-        c.strokeStyle = cell.index === layoutSettings.activeCell ? '#1976d2' : '#d0d7de';
-        c.lineWidth = cell.index === layoutSettings.activeCell ? 2.5 : 1.2;
-        c.strokeRect(cell.x, cell.y, cell.w, cell.h);
-
-        c.fillStyle = cell.index === layoutSettings.activeCell ? '#1976d2' : '#6b7280';
-        c.fillRect(cell.x + 8, cell.y + 8, 28, 20);
-        c.fillStyle = '#fff';
-        c.font = 'bold 12px Arial, sans-serif';
-        c.textAlign = 'center';
-        c.textBaseline = 'middle';
-        c.fillText(String(cell.index + 1), cell.x + 22, cell.y + 18);
-      }
-      c.restore();
-    });
-  }
-
   function drawSelectionRectOverlay() {
-    if (!selectionRect) return;
-    const r = rectNormalized(selectionRect);
+    if (!editorState.selectionRect) return;
+    const r = rectNormalized(editorState.selectionRect);
     ctx.save();
     ctx.fillStyle = 'rgba(25,118,210,0.10)';
     ctx.strokeStyle = '#1976d2';
@@ -4618,13 +2932,13 @@
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
     drawStoryboardCourts(ctx);
-    objects.forEach((o,i) => drawObject(ctx,o,selectedIndices.has(i)));
+    editorState.objects.forEach((o,i) => drawObject(ctx,o,editorState.selectedIndices.has(i)));
     drawGroupRotationOverlay();
     drawSelectionRectOverlay();
   }
 
   function drawGroupRotationOverlay() {
-    if (selectedIndices.size <= 1 || tool !== 'select') return;
+    if (editorState.selectedIndices.size <= 1 || editorState.tool !== 'select') return;
 
     const group = getGroupRotationHandle();
     const b = selectedGroupBounds();
@@ -4687,7 +3001,7 @@
         ctx.strokeRect(o.x-s,o.y-s,o.size*1.8,o.size*1.8);
       }
 
-      if (rotatableTypes.has(o.type) && selectedIndices.size <= 1) {
+      if (rotatableTypes.has(o.type) && editorState.selectedIndices.size <= 1) {
         const h = getRotationHandle(o);
 
         ctx.setLineDash([]);
@@ -4874,10 +3188,10 @@
   function updateProperties(syncInputs=true) {
     const mobileDeleteButton = document.getElementById('mobileDeleteSelectionBtn');
     if (mobileDeleteButton) {
-      mobileDeleteButton.disabled = selectedIndices.size === 0;
+      mobileDeleteButton.disabled = editorState.selectedIndices.size === 0;
     }
 
-    if (selected < 0 || !objects[selected] || selectedIndices.size === 0) {
+    if (editorState.selected < 0 || !editorState.objects[editorState.selected] || editorState.selectedIndices.size === 0) {
       emptyProps.hidden = false;
       propPanel.hidden = true;
       markerPropColors.hidden = true;
@@ -4887,13 +3201,13 @@
       return;
     }
 
-    const o = objects[selected];
-    const multi = selectedIndices.size > 1;
+    const o = editorState.objects[editorState.selected];
+    const multi = editorState.selectedIndices.size > 1;
     const selectedList = selectedObjects();
 
     emptyProps.hidden = true;
     propPanel.hidden = false;
-    propType.textContent = multi ? `${selectedIndices.size} Objekte` : (typeNames[o.type] || o.type);
+    propType.textContent = multi ? `${editorState.selectedIndices.size} Objekte` : (typeNames[o.type] || o.type);
 
     const isSymbol = o.kind === 'symbol';
     const allSymbols = selectedList.length > 0 && selectedList.every(item => item.kind === 'symbol');
@@ -5089,7 +3403,7 @@
     document.querySelectorAll('.marker-swatch').forEach(btn => {
       btn.classList.toggle(
         'active',
-        btn.dataset.color.toLowerCase() === markerColor.toLowerCase()
+        btn.dataset.color.toLowerCase() === editorState.markerColor.toLowerCase()
       );
     });
   }
@@ -5098,13 +3412,13 @@
     document.querySelectorAll('.freehand-swatch').forEach(btn => {
       btn.classList.toggle(
         'active',
-        btn.dataset.color.toLowerCase() === freehandColor.toLowerCase()
+        btn.dataset.color.toLowerCase() === editorState.freehandColor.toLowerCase()
       );
     });
   }
 
   function setFreehandColor(color) {
-    freehandColor = color;
+    editorState.freehandColor = color;
     freehandCustomColor.value = color;
     updateFreehandSwatches();
   }
@@ -5116,10 +3430,10 @@
   freehandCustomColor.addEventListener('input', () => setFreehandColor(freehandCustomColor.value));
 
   function setMarkerColor(color) {
-    markerColor = color;
+    editorState.markerColor = color;
     updateMarkerSwatches();
 
-    if (markerTypes.has(tool)) {
+    if (markerTypes.has(editorState.tool)) {
       strokeColor.value = color;
     }
   }
@@ -5134,14 +3448,14 @@
 
   document.querySelectorAll('.prop-marker-swatch').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (selected < 0) return;
+      if (editorState.selected < 0) return;
 
       const targets = selectedObjects();
       if (!targets.length || !targets.every(item => item.kind === 'symbol' && markerTypes.has(item.type))) return;
 
       targets.forEach(item => { item.color = btn.dataset.color; });
       propColor.value = btn.dataset.color;
-      markerColor = btn.dataset.color;
+      editorState.markerColor = btn.dataset.color;
       markerCustomColor.value = btn.dataset.color;
 
       updateMarkerSwatches();
@@ -5153,7 +3467,7 @@
 
   document.querySelectorAll('.path-color-swatch').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (selected < 0) return;
+      if (editorState.selected < 0) return;
 
       const targets = selectedObjects();
       if (!targets.length || !targets.every(item => item.kind === 'path' && pathTools.has(item.type))) return;
@@ -5169,7 +3483,7 @@
 
   document.querySelectorAll('.attacker-color-swatch').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (selected < 0) return;
+      if (editorState.selected < 0) return;
 
       const targets = selectedObjects();
       if (!targets.length || !targets.every(item =>
@@ -5187,7 +3501,7 @@
 
   document.querySelectorAll('.defender-color-swatch').forEach(btn => {
     btn.addEventListener('click', () => {
-      if (selected < 0) return;
+      if (editorState.selected < 0) return;
 
       const targets = selectedObjects();
       if (!targets.length || !targets.every(item =>
@@ -5204,7 +3518,7 @@
   });
 
   function propertyChanged(commitNow=true, changedProperty=null) {
-    if (selected < 0) return;
+    if (editorState.selected < 0) return;
 
     const targets = selectedObjects();
     if (!targets.length) return;
@@ -5246,11 +3560,11 @@
   });
 
   propColor.addEventListener('change', () => {
-    if (selected >= 0) {
+    if (editorState.selected >= 0) {
       const targets = selectedObjects();
 
       if (targets.length && targets.every(item => item.kind === 'symbol' && markerTypes.has(item.type))) {
-        markerColor = propColor.value;
+        editorState.markerColor = propColor.value;
         markerCustomColor.value = propColor.value;
         updateMarkerSwatches();
       }
@@ -5261,7 +3575,7 @@
   });
 
   propRotation.addEventListener('input', () => {
-    if (selected < 0) return;
+    if (editorState.selected < 0) return;
 
     const targets = selectedObjects();
     if (!targets.length || !targets.every(item =>
@@ -5275,7 +3589,7 @@
   });
 
   propRotation.addEventListener('change', () => {
-    if (selected < 0) return;
+    if (editorState.selected < 0) return;
 
     const targets = selectedObjects();
     if (!targets.length || !targets.every(item =>
@@ -5292,7 +3606,7 @@
   });
 
   propRotationRange.addEventListener('input', () => {
-    if (selected < 0) return;
+    if (editorState.selected < 0) return;
 
     const targets = selectedObjects();
     if (!targets.length || !targets.every(item =>
@@ -5311,7 +3625,7 @@
   });
 
   function rotateSelected(delta, absolute=null) {
-    if (selected < 0) return;
+    if (editorState.selected < 0) return;
 
     const targets = selectedObjects();
     if (!targets.length || !targets.every(item =>
@@ -5334,7 +3648,7 @@
   document.getElementById('rotPlus').addEventListener('click', () => rotateSelected(15));
 
   propShowLabel.addEventListener('change', () => {
-    if (selected < 0) return;
+    if (editorState.selected < 0) return;
     const targets = selectedObjects().filter(objectSupportsLabel);
     if (!targets.length) return;
     targets.forEach(o => { o.showLabel = propShowLabel.checked; });
@@ -5343,8 +3657,8 @@
   });
 
   propAttackFormation.addEventListener('change', () => {
-    if (selected < 0) return;
-    const o = objects[selected];
+    if (editorState.selected < 0) return;
+    const o = editorState.objects[editorState.selected];
     if (o.type !== 'attacker') return;
 
     o.attackFormation = propAttackFormation.value;
@@ -5358,8 +3672,8 @@
   });
 
   propAttackLabel.addEventListener('change', () => {
-    if (selected < 0) return;
-    const o = objects[selected];
+    if (editorState.selected < 0) return;
+    const o = editorState.objects[editorState.selected];
     if (o.type !== 'attacker') return;
     o.label = propAttackLabel.value;
     o.showLabel = true;
@@ -5369,8 +3683,8 @@
   });
 
   propDefenseFormation.addEventListener('change', () => {
-    if (selected < 0) return;
-    const o = objects[selected];
+    if (editorState.selected < 0) return;
+    const o = editorState.objects[editorState.selected];
     if (o.type !== 'defender') return;
 
     o.defenseFormation = propDefenseFormation.value;
@@ -5384,8 +3698,8 @@
   });
 
   propDefenseLabel.addEventListener('change', () => {
-    if (selected < 0) return;
-    const o = objects[selected];
+    if (editorState.selected < 0) return;
+    const o = editorState.objects[editorState.selected];
     if (o.type !== 'defender') return;
     o.label = propDefenseLabel.value;
     o.showLabel = true;
@@ -5395,8 +3709,8 @@
   });
 
   propPathLabel.addEventListener('change', () => {
-    if (selected < 0) return;
-    const o = objects[selected];
+    if (editorState.selected < 0) return;
+    const o = editorState.objects[editorState.selected];
     if (o.kind !== 'path' || !pathTools.has(o.type)) return;
 
     if (propPathLabel.value === '__custom__') {
@@ -5416,8 +3730,8 @@
   });
 
   propPathCustomLabel.addEventListener('input', () => {
-    if (selected < 0) return;
-    const o = objects[selected];
+    if (editorState.selected < 0) return;
+    const o = editorState.objects[editorState.selected];
     if (o.kind !== 'path' || !pathTools.has(o.type)) return;
 
     o.label = propPathCustomLabel.value;
@@ -5427,8 +3741,8 @@
   });
 
   propPathCustomLabel.addEventListener('change', () => {
-    if (selected < 0) return;
-    const o = objects[selected];
+    if (editorState.selected < 0) return;
+    const o = editorState.objects[editorState.selected];
     if (o.kind !== 'path' || !pathTools.has(o.type)) return;
 
     o.label = propPathCustomLabel.value;
@@ -5439,78 +3753,18 @@
   });
 
   propLabelPreset.addEventListener('change', () => {
-    if (selected < 0) return;
+    if (editorState.selected < 0) return;
     if (propLabelPreset.value === 'custom') return;
     const targets = selectedObjects().filter(objectSupportsLabel);
     if (!targets.length) return;
     targets.forEach(o => applyLabelPresetToObject(o, propLabelPreset.value));
-    updateLabelOffsetEditorFromObject(objects[selected]);
+    updateLabelOffsetEditorFromObject(editorState.objects[editorState.selected]);
     commit();
     draw();
   });
 
-  let draggingLabelOffset = false;
-  let labelOffsetDirty = false;
-
-  function updateSelectedLabelOffsetFromEvent(e, doCommit=false) {
-    if (selected < 0) return;
-    const o = objects[selected];
-    if (!objectSupportsLabel(o)) return;
-
-    const rect = labelOffsetEditor.getBoundingClientRect();
-    const px = clamp(e.clientX - rect.left, 0, rect.width);
-    const py = clamp(e.clientY - rect.top, 0, rect.height);
-
-    const newX = Math.round(LABEL_OFFSET_MIN + (px / rect.width) * (LABEL_OFFSET_MAX - LABEL_OFFSET_MIN));
-    const newY = Math.round(LABEL_OFFSET_MIN + (py / rect.height) * (LABEL_OFFSET_MAX - LABEL_OFFSET_MIN));
-
-    const targets = selectedObjects().filter(objectSupportsLabel);
-    targets.forEach(item => {
-      item.labelOffsetX = newX;
-      item.labelOffsetY = newY;
-      ensureLabelOffset(item);
-    });
-
-    propLabelPreset.value = getLabelPresetForObject(o);
-    updateLabelOffsetEditorFromObject(o);
-    draw();
-
-    if (doCommit) commit();
-    else labelOffsetDirty = true;
-  }
-
-  labelOffsetEditor.addEventListener('pointerdown', e => {
-    if (selected < 0) return;
-    const o = objects[selected];
-    if (!objectSupportsLabel(o)) return;
-    draggingLabelOffset = true;
-    labelOffsetDirty = false;
-    labelOffsetEditor.setPointerCapture(e.pointerId);
-    updateSelectedLabelOffsetFromEvent(e, false);
-    e.preventDefault();
-  });
-
-  labelOffsetEditor.addEventListener('pointermove', e => {
-    if (!draggingLabelOffset) return;
-    updateSelectedLabelOffsetFromEvent(e, false);
-  });
-
-  labelOffsetEditor.addEventListener('pointerup', e => {
-    if (!draggingLabelOffset) return;
-    draggingLabelOffset = false;
-    updateSelectedLabelOffsetFromEvent(e, false);
-    if (labelOffsetDirty) commit();
-    labelOffsetDirty = false;
-  });
-
-  labelOffsetEditor.addEventListener('pointercancel', () => {
-    draggingLabelOffset = false;
-    if (labelOffsetDirty) commit();
-    labelOffsetDirty = false;
-  });
-
   function exportSvg() {
-    const content = objects.map((o,i) => svgRenderer.objectToSvg(o,i)).join('\n');
+    const content = editorState.objects.map((o,i) => svgRenderer.objectToSvg(o,i)).join('\n');
 
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg"
@@ -5529,8 +3783,8 @@
   }
 
   async function exportPng() {
-    const tmpSel = selected;
-    const tmpSelectedIndices = new Set(selectedIndices);
+    const tmpSel = editorState.selected;
+    const tmpSelectedIndices = new Set(editorState.selectedIndices);
     clearSelection();
     draw();
 
@@ -5541,32 +3795,31 @@
         (blob,name) => projectFileController.saveBlobForUser(blob,name)
       );
     } finally {
-      selected = tmpSel;
-      selectedIndices = tmpSelectedIndices;
+      editorState.selected = tmpSel;
+      editorState.selectedIndices = tmpSelectedIndices;
       draw();
     }
   }
 
   async function saveProject() {
     const data = {
-      version: 92,
+      version: 93,
       canvas: { width:canvas.width, height:canvas.height },
-      court: cloneCourtSettings(cellCourts[0] || courtSettings),
+      court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
-        cols:layoutSettings.cols,
-        rows:layoutSettings.rows,
-        activeCell:layoutSettings.activeCell,
-        zoomPercent:Math.round(canvasZoom * 100)
+        cols:editorState.layoutSettings.cols,
+        rows:editorState.layoutSettings.rows,
+        activeCell:editorState.layoutSettings.activeCell,
+        zoomPercent:Math.round(editorState.canvasZoom * 100)
       },
-      cellCourts: cellCourts.map(cloneCourtSettings),
-      objects
+      cellCourts: editorState.cellCourts.map(cloneCourtSettings),
+      objects:editorState.objects
     };
 
     const blob = new Blob(
       [JSON.stringify(data,null,2)],
       {type:'application/json'}
     );
-
 
     await projectFileController.saveProjectBlob(blob);
   }
@@ -5585,36 +3838,36 @@
         canvas.width = savedCanvasWidth;
         canvas.height = savedCanvasHeight;
 
-        objects=data.objects.map(objectModel.normalizeLoadedObject);
+        editorState.objects=data.objects.map(objectModel.normalizeLoadedObject);
 
         if (data.layout) {
-          layoutSettings = {
+          editorState.layoutSettings = {
             cols: Math.max(1, Math.min(4, +data.layout.cols || 1)),
             rows: Math.max(1, Math.min(2, +data.layout.rows || 1)),
             activeCell: Math.max(0, +data.layout.activeCell || 0)
           };
-          canvasZoom = Math.max(0.25, Math.min(2, (+data.layout.zoomPercent || 100) / 100));
+          editorState.canvasZoom = Math.max(0.25, Math.min(2, (+data.layout.zoomPercent || 100) / 100));
         } else {
-          layoutSettings = { cols:1, rows:1, activeCell:0 };
-          canvasZoom = 1;
+          editorState.layoutSettings = { cols:1, rows:1, activeCell:0 };
+          editorState.canvasZoom = 1;
         }
 
         if (Array.isArray(data.cellCourts) && data.cellCourts.length) {
-          cellCourts = data.cellCourts.map(cloneCourtSettings);
+          editorState.cellCourts = data.cellCourts.map(cloneCourtSettings);
         } else if (data.court) {
-          cellCourts = [cloneCourtSettings(data.court)];
+          editorState.cellCourts = [cloneCourtSettings(data.court)];
         } else {
-          cellCourts = [cloneCourtSettings(makeDefaultCourtSettings())];
+          editorState.cellCourts = [cloneCourtSettings(makeDefaultCourtSettings())];
         }
 
         ensureCellCourts();
-        layoutGrid.value = `${layoutSettings.cols}x${layoutSettings.rows}`;
-        setActiveCell(layoutSettings.activeCell, false);
+        layoutGrid.value = `${editorState.layoutSettings.cols}x${editorState.layoutSettings.rows}`;
+        setActiveCell(editorState.layoutSettings.activeCell, false);
 
         resizeCanvasForStoryboard();
 
         clearSelection();
-        historyManager.reset(objects);
+        historyManager.reset(editorState.objects);
 
         const loadedProjectName = projectFileController.setLoadedFile(file, fileHandle);
 
@@ -5649,799 +3902,121 @@
     e.target.value='';
   });
 
-  courtMode.value = courtSettings.mode;
-  courtTheme.value = courtSettings.theme;
-  courtRotation.value = String(courtSettings.rotation);
-  sectorOpacity.value = courtSettings.sectorOpacityPercent;
+  courtMode.value = editorState.courtSettings.mode;
+  courtTheme.value = editorState.courtSettings.theme;
+  courtRotation.value = String(editorState.courtSettings.rotation);
+  sectorOpacity.value = editorState.courtSettings.sectorOpacityPercent;
   sectorOpacityValue.textContent = `${sectorOpacity.value}%`;
-  gridVisible.checked = courtSettings.gridVisible;
-
+  gridVisible.checked = editorState.courtSettings.gridVisible;
 
   // ===== Grouped player tools on desktop =====
-  const attackGroupBtn = document.getElementById('attackGroupBtn');
-  const defenseGroupBtn = document.getElementById('defenseGroupBtn');
-  const otherGroupBtn = document.getElementById('otherGroupBtn');
-  const attackToolDropdown = document.getElementById('attackToolDropdown');
-  const defenseToolDropdown = document.getElementById('defenseToolDropdown');
-  const otherToolDropdown = document.getElementById('otherToolDropdown');
-  let attackGroupSelection = 'attacker';
-  let defenseGroupSelection = 'defender';
-  let otherGroupSelection = 'cone';
-
-  function attackGroupMarkup(selectedTool) {
-    const withBall = selectedTool === 'attackerBall';
-    const label = withBall ? 'Angreifer mit Ball' : 'Angriffsspieler';
-    const ballSvg = withBall ? '<circle cx="11" cy="-9" r="4" fill="#111111"/>' : '';
-    return `
-      <span class="ico">
-        <svg viewBox="-22 -16 44 32">
-          <defs><clipPath id="triClipMainDynamic"><path d="M0,-12 L-13,12 L13,12 Z"/></clipPath></defs>
-          <path d="M0,-12 L-13,12 L13,12 Z" fill="white" stroke="#1976d2" stroke-width="2"/>
-          <rect x="-15" y="-14" width="30" height="14" fill="#1976d2" clip-path="url(#triClipMainDynamic)"/>
-          ${ballSvg}
-        </svg>
-      </span>
-      <span class="tool-group-label">${label}</span>
-      <span class="tool-group-arrow">▼</span>`;
-  }
-
-  function defenseGroupMarkup(selectedTool) {
-    const isGoalkeeper = selectedTool === 'goalkeeper';
-    const label = isGoalkeeper ? 'Torwart' : 'Abwehrspieler';
-    const armsSvg = isGoalkeeper
-      ? '<path d="M-18,0 L-11,0 M11,0 L18,0" stroke="#d32f2f" stroke-width="2.2" stroke-linecap="round"/>'
-      : '';
-    return `
-      <span class="ico">
-        <svg viewBox="-26 -16 52 32">
-          ${armsSvg}
-          <circle cx="0" cy="0" r="12" fill="white" stroke="#d32f2f" stroke-width="2"/>
-          <path d="M-12,0 A12,12 0 0 1 12,0 L12,0 L-12,0 Z" fill="#d32f2f"/>
-        </svg>
-      </span>
-      <span class="tool-group-label">${label}</span>
-      <span class="tool-group-arrow">▼</span>`;
-  }
-
-  function otherGroupMarkup(selectedTool) {
-    const option = otherToolDropdown?.querySelector(`.tool[data-tool="${selectedTool}"]`);
-    const icoHtml = option?.querySelector('.ico')?.innerHTML || '';
-    const label = option ? option.textContent.trim() : 'Sonstiges';
-    return `
-      <span class="ico">${icoHtml}</span>
-      <span class="tool-group-label">${label}</span>
-      <span class="tool-group-arrow">▼</span>`;
-  }
-
-  function updateGroupedToolButtons() {
-    if (attackGroupBtn) attackGroupBtn.innerHTML = attackGroupMarkup(attackGroupSelection);
-    if (defenseGroupBtn) defenseGroupBtn.innerHTML = defenseGroupMarkup(defenseGroupSelection);
-    if (otherGroupBtn) otherGroupBtn.innerHTML = otherGroupMarkup(otherGroupSelection);
-    bindGroupedToolArrowHandlers();
-  }
-
-  function closeDesktopToolDropdowns(except=null) {
-    [attackToolDropdown, defenseToolDropdown, otherToolDropdown].forEach(dd => {
-      if (dd && dd !== except) dd.classList.remove('open');
-    });
-  }
-
-  function bindGroupedToolArrowHandlers() {
-    const attackArrow = attackGroupBtn?.querySelector('.tool-group-arrow');
-    const defenseArrow = defenseGroupBtn?.querySelector('.tool-group-arrow');
-    const otherArrow = otherGroupBtn?.querySelector('.tool-group-arrow');
-
-    if (attackArrow) {
-      attackArrow.onclick = (e) => {
-        e.stopPropagation();
-        const willOpen = !attackToolDropdown.classList.contains('open');
-        closeDesktopToolDropdowns();
-        if (willOpen) attackToolDropdown.classList.add('open');
-      };
-    }
-
-    if (defenseArrow) {
-      defenseArrow.onclick = (e) => {
-        e.stopPropagation();
-        const willOpen = !defenseToolDropdown.classList.contains('open');
-        closeDesktopToolDropdowns();
-        if (willOpen) defenseToolDropdown.classList.add('open');
-      };
-    }
-
-    if (otherArrow) {
-      otherArrow.onclick = (e) => {
-        e.stopPropagation();
-        const willOpen = !otherToolDropdown.classList.contains('open');
-        closeDesktopToolDropdowns();
-        if (willOpen) otherToolDropdown.classList.add('open');
-      };
-    }
-  }
-
-  function bindGroupMainButton(button, getCurrentTool) {
-    button?.addEventListener('click', (e) => {
-      if (e.target.closest('.tool-group-arrow')) return;
-      setTool(getCurrentTool());
-      closeDesktopToolDropdowns();
-    });
-  }
-
-  bindGroupMainButton(attackGroupBtn, () => attackGroupSelection);
-  bindGroupMainButton(defenseGroupBtn, () => defenseGroupSelection);
-  bindGroupMainButton(otherGroupBtn, () => otherGroupSelection);
-
-  document.querySelectorAll('.tool-dropdown .tool').forEach(btn => {
-    btn.addEventListener('click', () => closeDesktopToolDropdowns());
-  });
-
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.tool-group')) closeDesktopToolDropdowns();
-  });
-
-  updateGroupedToolButtons();
-
-
-  // ===== Straight / complex dropdowns for paths and actions =====
-  const pathGroupSelections = {
-    run:'run', pass:'pass', passFake:'passFake', runBall:'runBall',
-    tip:'tip', dribble:'dribble', shot:'shot', shotFake:'shotFake', screen:'screen'
-  };
-
-  const pathVariantToGroup = {
-    run:'run', complexRun:'run', runMulti:'run',
-    pass:'pass', passCurve:'pass',
-    passFake:'passFake', passFakeCurve:'passFake',
-    runBall:'runBall', runBallCurve:'runBall', runBallMulti:'runBall',
-    tip:'tip', tipCurve:'tip',
-    dribble:'dribble', dribbleCurve:'dribble',
-    shot:'shot', shotCurve:'shot',
-    shotFake:'shotFake', shotFakeCurve:'shotFake',
-    screen:'screen', screenCurve:'screen', screenMulti:'screen'
-  };
-
-  function updatePathGroupButtons() {
-    document.querySelectorAll('.path-tool-group').forEach(group => {
-      const key=group.dataset.pathGroup;
-      const btn=group.querySelector('.path-group-main');
-      const selectedTool=pathGroupSelections[key] || key;
-      const option=group.querySelector(`.tool[data-tool="${selectedTool}"]`);
-      if (!btn || !option) return;
-      const ico=option.querySelector('.ico');
-      if (ico) btn.querySelector('.ico').innerHTML=ico.innerHTML;
-      btn.dataset.currentTool=selectedTool;
-    });
-  }
-
-  document.querySelectorAll('.path-tool-group').forEach(group => {
-    const key=group.dataset.pathGroup;
-    const btn=group.querySelector('.path-group-main');
-    const dropdown=group.querySelector('.path-tool-dropdown');
-    const arrow=btn?.querySelector('.tool-group-arrow');
-
-    arrow?.addEventListener('click', e => {
-      e.stopPropagation();
-      const open=!dropdown.classList.contains('open');
-      closeDesktopToolDropdowns();
-      document.querySelectorAll('.path-tool-dropdown').forEach(dd => dd.classList.remove('open'));
-      if (open) dropdown.classList.add('open');
-    });
-
-    btn?.addEventListener('click', e => {
-      if (e.target.closest('.tool-group-arrow')) return;
-      setTool(pathGroupSelections[key] || key);
-      document.querySelectorAll('.path-tool-dropdown').forEach(dd => dd.classList.remove('open'));
-    });
-
-    group.querySelectorAll('.tool').forEach(option => {
-      option.addEventListener('click', () => {
-        pathGroupSelections[key]=option.dataset.tool;
-        updatePathGroupButtons();
-        dropdown.classList.remove('open');
-      });
-    });
-  });
-
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.path-tool-group')) {
-      document.querySelectorAll('.path-tool-dropdown').forEach(dd => dd.classList.remove('open'));
-    }
-  });
-
-  updatePathGroupButtons();
-
-
-  let lastMultiPathClickTime = 0;
-  let lastMultiPathClickPoint = null;
-  const MULTI_PATH_DOUBLE_CLICK_MS = 360;
-  const MULTI_PATH_DOUBLE_CLICK_DISTANCE = 14;
-
-  function cleanMultiPathPreviewPoints(o) {
-    if (!o || !Array.isArray(o.points)) return;
-
-    // The final double-click generates two click events before dblclick.
-    // Remove trailing points that are effectively at the same location.
-    while (o.points.length >= 3) {
-      const a = o.points[o.points.length - 1];
-      const b = o.points[o.points.length - 2];
-      if (Math.hypot(a.x - b.x, a.y - b.y) > 2) break;
-      o.points.pop();
-    }
-
-    syncMultiPathExtents(o);
-  }
-
-  function finishMultiPath() {
-    if (!drawing || !isMultiPointPath(drawing) || !Array.isArray(drawing.points)) return;
-
-    cleanMultiPathPreviewPoints(drawing);
-
-    if (drawing.points.length >= 2 && polylineLength(drawing.points) > 6) {
-      objects.push(drawing);
-      setSingleSelection(objects.length - 1);
-      commit();
-    }
-
-    drawing = null;
-    lastMultiPathClickTime = 0;
-    lastMultiPathClickPoint = null;
-    updateProperties();
-    draw();
-  }
-
-  function cancelMultiPath() {
-    if (!drawing || !isMultiPointPath(drawing)) return;
-    drawing = null;
-    lastMultiPathClickTime = 0;
-    lastMultiPathClickPoint = null;
-    draw();
-  }
-
-
-  // ===== Personal tool order (v80) =====
-  const TOOL_ORDER_STORAGE_KEY = 'handballtrainer.toolOrder.v80';
-
-  const toolOrderMobileMap = {
-    players: {
-      'group:attack':['attacker','attackerBall'],
-      'tool:feeder':['feeder'],
-      'group:defense':['defender','goalkeeper'],
-      'tool:coach':['coach'],
-      'tool:ball':['ball']
-    },
-    paths: {
-      'path:run':['run','complexRun','runMulti'],
-      'path:pass':['pass','passCurve'],
-      'path:screen':['screen','screenCurve','screenMulti'],
-      'path:passFake':['passFake','passFakeCurve'],
-      'path:runBall':['runBall','runBallCurve','runBallMulti'],
-      'path:tip':['tip','tipCurve'],
-      'path:dribble':['dribble','dribbleCurve'],
-      'path:shot':['shot','shotCurve'],
-      'path:shotFake':['shotFake','shotFakeCurve'],
-      'tool:freehand':['freehand']
-    },
-    other: {
-      'group:other':['cone','ring','disc','airbody','bench','mat','crashMat']
-    }
-  };
-
-  function sortableToolId(el) {
-    if (!el) return null;
-    if (el.matches('.path-tool-group[data-path-group]')) {
-      return 'path:' + el.dataset.pathGroup;
-    }
-    if (el.matches('.tool-group[data-tool-group]')) {
-      return 'group:' + el.dataset.toolGroup;
-    }
-    if (el.matches(':scope.tool[data-tool]')) {
-      return 'tool:' + el.dataset.tool;
-    }
-    return null;
-  }
-
-  function isTopLevelSortableTool(el) {
-    if (!el || el.parentElement !== document.querySelector('aside')) return false;
-    return !!sortableToolId(el);
-  }
-
-  function toolSectionDefinitions() {
-    const aside = document.querySelector('aside');
-    if (!aside) return [];
-
-    const headings = [...aside.children].filter(el => el.tagName === 'H3');
-    const wanted = [
-      ['players','Spieler / Trainer'],
-      ['paths','Wege / Aktionen'],
-      ['other','Sonstiges']
-    ];
-
-    return wanted.map(([key,title]) => {
-      const heading = headings.find(h => h.textContent.trim() === title);
-      if (!heading) return null;
-
-      const items = [];
-      let anchor = null;
-      let n = heading.nextElementSibling;
-
-      while (n) {
-        if (n.tagName === 'H3') {
-          anchor = n;
-          break;
-        }
-
-        if (isTopLevelSortableTool(n)) {
-          items.push(n);
-        } else if (items.length) {
-          // Color panels / help stay fixed after the sortable buttons.
-          anchor = n;
-          break;
-        }
-
-        n = n.nextElementSibling;
-      }
-
-      return {key, heading, items, anchor};
-    }).filter(Boolean);
-  }
-
-  function currentToolOrder() {
-    const result = {};
-    toolSectionDefinitions().forEach(section => {
-      result[section.key] = section.items
-        .map(sortableToolId)
-        .filter(Boolean);
-    });
-    return result;
-  }
-
-  function loadStoredToolOrder() {
-    try {
-      const raw = localStorage.getItem(TOOL_ORDER_STORAGE_KEY);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch (err) {
-      console.warn('[Handballtrainer] Werkzeugreihenfolge konnte nicht geladen werden:', err);
-      return null;
-    }
-  }
-
-  function saveToolOrder() {
-    try {
-      localStorage.setItem(
-        TOOL_ORDER_STORAGE_KEY,
-        JSON.stringify(currentToolOrder())
-      );
-    } catch (err) {
-      console.warn('[Handballtrainer] Werkzeugreihenfolge konnte nicht gespeichert werden:', err);
-    }
-  }
-
-  function applyStoredToolOrder() {
-    const stored = loadStoredToolOrder();
-    if (!stored) return;
-
-    toolSectionDefinitions().forEach(section => {
-      const byId = new Map(
-        section.items.map(item => [sortableToolId(item), item])
-      );
-
-      const requested = Array.isArray(stored[section.key])
-        ? stored[section.key]
-        : [];
-
-      const ordered = [];
-      requested.forEach(id => {
-        const item = byId.get(id);
-        if (item && !ordered.includes(item)) ordered.push(item);
-      });
-
-      // Newly introduced tools that are not in an older preference remain
-      // available and are appended in their default order.
-      section.items.forEach(item => {
-        if (!ordered.includes(item)) ordered.push(item);
-      });
-
-      ordered.forEach(item => {
-        if (section.anchor) section.anchor.before(item);
-        else section.heading.parentElement.appendChild(item);
-      });
-    });
-  }
-
-  function clearToolSortIndicators() {
-    document.querySelectorAll(
-      '.sortable-tool-item.tool-sort-before, .sortable-tool-item.tool-sort-after'
-    ).forEach(el => {
-      el.classList.remove('tool-sort-before','tool-sort-after');
-    });
-  }
-
-  let draggedToolItem = null;
-  let draggedToolCategory = null;
-
-  function installToolSorting() {
-    toolSectionDefinitions().forEach(section => {
-      section.items.forEach(item => {
-        item.classList.add('sortable-tool-item');
-        item.dataset.sortCategory = section.key;
-        item.dataset.sortId = sortableToolId(item);
-
-        let handle = item.querySelector(':scope > .tool-sort-handle');
-        if (!handle) {
-          handle = document.createElement('span');
-          handle.className = 'tool-sort-handle';
-          handle.textContent = '⋮⋮';
-          handle.title = 'Innerhalb dieser Kategorie verschieben';
-          handle.setAttribute('aria-label','Werkzeug verschieben');
-          handle.draggable = true;
-
-          if (item.tagName === 'BUTTON') {
-            item.prepend(handle);
-          } else {
-            item.prepend(handle);
-          }
-        }
-
-        handle.addEventListener('click', e => {
-          // A click on the grip must not select a drawing tool.
-          e.preventDefault();
-          e.stopPropagation();
-        });
-
-        handle.addEventListener('dragstart', e => {
-          draggedToolItem = item;
-          draggedToolCategory = section.key;
-          item.classList.add('tool-sort-dragging');
-          closeDesktopToolDropdowns();
-
-          e.dataTransfer.effectAllowed = 'move';
-          try {
-            e.dataTransfer.setData('text/plain', item.dataset.sortId || '');
-          } catch (_) {}
-        });
-
-        handle.addEventListener('dragend', () => {
-          item.classList.remove('tool-sort-dragging');
-          clearToolSortIndicators();
-
-          if (draggedToolItem) {
-            saveToolOrder();
-          }
-
-          draggedToolItem = null;
-          draggedToolCategory = null;
-        });
-
-        item.addEventListener('dragover', e => {
-          if (!draggedToolItem ||
-              draggedToolItem === item ||
-              item.dataset.sortCategory !== draggedToolCategory) return;
-
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-
-          clearToolSortIndicators();
-
-          const rect = item.getBoundingClientRect();
-          const after = e.clientY > rect.top + rect.height / 2;
-          item.classList.add(after ? 'tool-sort-after' : 'tool-sort-before');
-        });
-
-        item.addEventListener('drop', e => {
-          if (!draggedToolItem ||
-              draggedToolItem === item ||
-              item.dataset.sortCategory !== draggedToolCategory) return;
-
-          e.preventDefault();
-
-          const rect = item.getBoundingClientRect();
-          const after = e.clientY > rect.top + rect.height / 2;
-
-          if (after) item.after(draggedToolItem);
-          else item.before(draggedToolItem);
-
-          clearToolSortIndicators();
-          saveToolOrder();
-        });
-      });
-    });
-  }
-
-  function orderedMobileTools(groupName, fallbackTools) {
-    const map = toolOrderMobileMap[groupName];
-    if (!map) return fallbackTools.slice();
-
-    const order = currentToolOrder()[groupName] || [];
-    const result = [];
-
-    order.forEach(id => {
-      (map[id] || []).forEach(toolName => {
-        if (!result.includes(toolName)) result.push(toolName);
-      });
-    });
-
-    fallbackTools.forEach(toolName => {
-      if (!result.includes(toolName)) result.push(toolName);
-    });
-
-    return result;
-  }
-
-  // Apply the preference before installing the drag handles.
-  applyStoredToolOrder();
-  installToolSorting();
-
   // ===== Smartphone controls =====
-  const mobileMedia = window.matchMedia('(max-width: 700px)');
-  const mobileProperties = document.querySelector('.properties');
-  const mobileToolSheet = document.getElementById('mobileToolSheet');
-  const mobileToolSheetGrid = document.getElementById('mobileToolSheetGrid');
-  const mobileToolSheetTitle = document.getElementById('mobileToolSheetTitle');
-  const mobileToolSheetClose = document.getElementById('mobileToolSheetClose');
-  const mobileBackdrop = document.getElementById('mobileBackdrop');
-  const mobileHint = document.getElementById('mobileHint');
-  const mobilePropsBtn = document.getElementById('mobilePropsBtn');
-  const mobileDeleteSelectionBtn = document.getElementById('mobileDeleteSelectionBtn');
-  const mobileSettingsBtn = document.getElementById('mobileSettingsBtn');
-  const mobileSettingsSheet = document.getElementById('mobileSettingsSheet');
-  const mobileSettingsClose = document.getElementById('mobileSettingsClose');
-  const mobileSelectBtn = document.getElementById('mobileSelectBtn');
-  const mobileUndoBtn = document.getElementById('mobileUndoBtn');
-  const mobileRedoBtn = document.getElementById('mobileRedoBtn');
-  let mobileHintTimer = null;
+  function courtRect(...args) { return courtRenderer.courtRect(...args); }
 
-  const mobileGroups = {
-    players: {
-      title:'Spieler / Trainer',
-      tools:['attacker','attackerBall','feeder','defender','goalkeeper','coach','ball']
-    },
-    paths: {
-      title:'Wege / Aktionen',
-      tools:['run','complexRun','runMulti','pass','passCurve','passFake','passFakeCurve','runBall','runBallCurve','runBallMulti','tip','tipCurve','dribble','dribbleCurve','shot','shotCurve','shotFake','shotFakeCurve','screen','screenCurve','screenMulti','freehand']
-    },
-    other: {
-      title:'Sonstiges',
-      tools:['cone','ring','disc','airbody','bench','mat','crashMat']
-    }
-  };
+  function drawStoryboardCourts(...args) { return courtRenderer.drawStoryboardCourts(...args); }
+  function setTool(...args) { return tools.setTool(...args); }
 
-  function mobileLayoutActive() {
-    return mobileMedia.matches;
-  }
+  function orderedMobileTools(...args) { return tools.orderedMobileTools(...args); }
 
-  function showMobileHint(message) {
-    if (!mobileHint) return;
-    mobileHint.textContent = message;
-    mobileHint.classList.add('show');
-    clearTimeout(mobileHintTimer);
-    mobileHintTimer = setTimeout(() => mobileHint.classList.remove('show'), 950);
-  }
+  function deleteSelected(...args) { return interactions.deleteSelected(...args); }
 
-  function updateMobileDeleteSelectionState() {
-    if (!mobileDeleteSelectionBtn) return;
-    mobileDeleteSelectionBtn.disabled = selectedIndices.size === 0;
-  }
+  function getRotationHandle(...args) { return interactions.getRotationHandle(...args); }
 
-  function closeMobilePanels() {
-    mobileToolSheet?.classList.remove('open');
-    mobileSettingsSheet?.classList.remove('open');
-    mobileProperties?.classList.remove('mobile-open');
-    mobileBackdrop?.classList.remove('show');
-    mobilePropsBtn?.classList.remove('active');
-    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
-  }
+  const courtRenderer = window.HandballCourtRenderer.createCourtRenderer(editorState, {
+    canvas,
+    cellCourtRect,
+    ctx,
+    layoutCellCount,
+    makeDefaultCourtSettings,
+    storyboardCells
+  });
+  const { courtThemes } = courtRenderer;
 
-  function openMobileToolGroup(name) {
-    const group = mobileGroups[name];
-    if (!group || !mobileToolSheetGrid) return;
-
-    mobileProperties?.classList.remove('mobile-open');
-    mobileSettingsSheet?.classList.remove('open');
-    mobileToolSheetGrid.innerHTML = '';
-
-    const originals = [...document.querySelectorAll('aside .tool')];
-    const orderedTools = orderedMobileTools(name, group.tools);
-    orderedTools.forEach(toolName => {
-      const original = originals.find(el => el.dataset.tool === toolName);
-      if (!original) return;
-
-      const clone = original.cloneNode(true);
-      clone.classList.toggle('active', tool === toolName);
-      clone.addEventListener('click', () => {
-        setTool(toolName);
-        document.querySelectorAll('#mobileToolSheet .tool').forEach(b => {
-          b.classList.toggle('active', b.dataset.tool === toolName);
-        });
-        closeMobilePanels();
-        showMobileHint((typeNames[toolName] || toolName) + ' ausgewählt');
-      });
-      mobileToolSheetGrid.appendChild(clone);
-    });
-
-    mobileToolSheetTitle.textContent = group.title;
-    mobileToolSheet.classList.add('open');
-    mobileBackdrop.classList.add('show');
-    document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.mobileGroup === name);
-    });
-  }
-
-  function openMobileProperties() {
-    mobileToolSheet?.classList.remove('open');
-    mobileSettingsSheet?.classList.remove('open');
-
-    // Always open the burger menu. With no selection the existing
-    // empty-properties view is shown instead of silently doing nothing.
-    updateProperties();
-    updateMobileDeleteSelectionState();
-
-    mobileProperties?.classList.add('mobile-open');
-    mobileBackdrop?.classList.add('show');
-    mobilePropsBtn?.classList.add('active');
-  }
-
-
-  function copySelectOptions(source, target) {
-    target.innerHTML = '';
-    [...source.options].forEach(opt => {
-      const clone = document.createElement('option');
-      clone.value = opt.value;
-      clone.textContent = opt.textContent;
-      target.appendChild(clone);
-    });
-  }
-
-  function syncMobileSettingsFromHeader() {
-    const pairs = [
-      ['strokeColor','mStrokeColor'],
-      ['strokeWidth','mStrokeWidth'],
-      ['symbolSize','mSymbolSize'],
-      ['courtMode','mCourtMode'],
-      ['courtTheme','mCourtTheme'],
-      ['courtRotation','mCourtRotation'],
-      ['sectorOpacity','mSectorOpacity'],
-      ['layoutGrid','mLayoutGrid'],
-      ['zoomRange','mZoomRange']
-    ];
-
-    pairs.forEach(([sourceId,targetId]) => {
-      const source = document.getElementById(sourceId);
-      const target = document.getElementById(targetId);
-      if (source && target) target.value = source.value;
-    });
-
-    const mGrid = document.getElementById('mGridVisible');
-    if (mGrid) mGrid.checked = gridVisible.checked;
-    const mFreehand = document.getElementById('mFreehandCustomColor');
-    if (mFreehand) mFreehand.value = freehandColor;
-
-    document.getElementById('mSectorOpacityValue').textContent = sectorOpacityValue.textContent;
-    document.getElementById('mZoomValue').textContent = zoomValue.textContent;
-
-    const mActive = document.getElementById('mActiveCellSelect');
-    copySelectOptions(activeCellSelect, mActive);
-    mActive.value = activeCellSelect.value;
-  }
-
-  function proxyInput(sourceId, targetId, eventName='change') {
-    const source = document.getElementById(sourceId);
-    const target = document.getElementById(targetId);
-    if (!source || !target) return;
-
-    target.addEventListener(eventName, () => {
-      if (target.type === 'checkbox') source.checked = target.checked;
-      else source.value = target.value;
-
-      source.dispatchEvent(new Event(eventName, {bubbles:true}));
-      syncMobileSettingsFromHeader();
-    });
-  }
-
-  proxyInput('strokeColor','mStrokeColor','input');
-  proxyInput('strokeWidth','mStrokeWidth','change');
-  proxyInput('symbolSize','mSymbolSize','change');
-  proxyInput('courtMode','mCourtMode','change');
-  proxyInput('courtTheme','mCourtTheme','change');
-  proxyInput('courtRotation','mCourtRotation','change');
-  proxyInput('sectorOpacity','mSectorOpacity','input');
-  proxyInput('gridVisible','mGridVisible','change');
-  proxyInput('layoutGrid','mLayoutGrid','change');
-  proxyInput('activeCellSelect','mActiveCellSelect','change');
-  proxyInput('zoomRange','mZoomRange','input');
-
-  document.querySelectorAll('.mobile-freehand-swatch').forEach(btn => {
-    btn.addEventListener('click', () => {
-      setFreehandColor(btn.dataset.color);
-      const input = document.getElementById('mFreehandCustomColor');
-      if (input) input.value = freehandColor;
-    });
+  const tools = window.HandballTools.createTools(editorState, {
+    canvas,
+    clearSelection,
+    draw,
+    freehandColorPanel,
+    isMultiPointPath,
+    markerColorPanel,
+    markerTypes,
+    pathTools,
+    status,
+    typeNames,
+    updateFreehandSwatches,
+    updateMarkerSwatches,
+    updateProperties
   });
 
-  document.getElementById('mFreehandCustomColor')?.addEventListener('input', e => {
-    setFreehandColor(e.target.value);
+  const mobile = window.HandballMobile.createMobile(editorState, {
+    activeCellSelect,
+    canvas,
+    clone,
+    deleteSelected,
+    draw,
+    duplicateCellBtn,
+    gridVisible,
+    historyManager,
+    isMultiPointPath,
+    orderedMobileTools,
+    redo,
+    sectorOpacityValue,
+    setCanvasZoom,
+    setFreehandColor,
+    setTool,
+    status,
+    typeNames,
+    undo,
+    updateProperties,
+    zoomInBtn,
+    zoomOutBtn,
+    zoomValue
   });
 
-  document.getElementById('mZoomOutBtn')?.addEventListener('click', () => {
-    zoomOutBtn.click();
-    syncMobileSettingsFromHeader();
-  });
-
-  document.getElementById('mZoomInBtn')?.addEventListener('click', () => {
-    zoomInBtn.click();
-    syncMobileSettingsFromHeader();
-  });
-
-  document.getElementById('mDuplicateCellBtn')?.addEventListener('click', () => {
-    duplicateCellBtn.click();
-    syncMobileSettingsFromHeader();
-  });
-
-  document.getElementById('mJsonSaveBtn')?.addEventListener('click', () => document.getElementById('jsonSaveBtn').click());
-  document.getElementById('mJsonLoadBtn')?.addEventListener('click', () => document.getElementById('jsonLoadBtn').click());
-  document.getElementById('mPngBtn')?.addEventListener('click', () => document.getElementById('pngBtn').click());
-  document.getElementById('mSvgBtn')?.addEventListener('click', () => document.getElementById('svgBtn').click());
-  document.getElementById('mClearBtn')?.addEventListener('click', () => document.getElementById('clearBtn').click());
-
-  function openMobileSettings() {
-    mobileToolSheet?.classList.remove('open');
-    mobileProperties?.classList.remove('mobile-open');
-    syncMobileSettingsFromHeader();
-    mobileSettingsSheet?.classList.add('open');
-    mobileBackdrop?.classList.add('show');
-  }
-
-  document.querySelectorAll('.mobile-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => openMobileToolGroup(btn.dataset.mobileGroup));
-  });
-
-  mobileToolSheetClose?.addEventListener('click', closeMobilePanels);
-  mobileSettingsClose?.addEventListener('click', closeMobilePanels);
-  mobileBackdrop?.addEventListener('click', closeMobilePanels);
-
-  mobileSettingsBtn?.addEventListener('click', () => {
-    if (mobileSettingsSheet?.classList.contains('open')) closeMobilePanels();
-    else openMobileSettings();
-  });
-
-  mobilePropsBtn?.addEventListener('click', () => {
-    if (mobileProperties?.classList.contains('mobile-open')) closeMobilePanels();
-    else openMobileProperties();
-  });
-
-  mobileDeleteSelectionBtn?.addEventListener('click', () => {
-    if (!selectedIndices.size) return;
-
-    const count = selectedIndices.size;
-    deleteSelected();
-    updateMobileDeleteSelectionState();
-
-    showMobileHint(
-      count > 1
-        ? `${count} Objekte gelöscht`
-        : 'Objekt gelöscht'
-    );
-  });
-
-  mobileSelectBtn?.addEventListener('click', () => {
-    setTool('select');
-    closeMobilePanels();
-    showMobileHint('Auswahlmodus');
-  });
-
-  mobileUndoBtn?.addEventListener('click', undo);
-  mobileRedoBtn?.addEventListener('click', redo);
-
-  mobileSelectBtn?.classList.toggle('active', tool === 'select');
-  updateMobileDeleteSelectionState();
-
-  // On smartphone, object selection stays on the canvas.
-  // Properties open only when the user explicitly taps the burger button.
-
-  mobileMedia.addEventListener?.('change', () => {
-    closeMobilePanels();
-    draw();
+  const interactions = window.HandballInteractions.createInteractions(editorState, {
+    LABEL_OFFSET_MAX,
+    LABEL_OFFSET_MIN,
+    canvas,
+    cellIndexAtPoint,
+    clamp,
+    clearSelection,
+    commit,
+    ctx,
+    draw,
+    drawObject,
+    duplicateSelectedObjects,
+    ensureLabelOffset,
+    getGroupRotationHandle,
+    getLabelPresetForObject,
+    hitTest,
+    initialPlayerRotation,
+    isComplexPath,
+    isMultiPointPath,
+    labelOffsetEditor,
+    moveObjectBy,
+    normalizeAngle,
+    objectFullyInsideRect,
+    objectModel,
+    objectSupportsLabel,
+    pathTools,
+    polylineLength,
+    propLabelPreset,
+    rectNormalized,
+    redo,
+    rotatableTypes,
+    rotateObjectAround,
+    rotatePoint,
+    selectedObjects,
+    setActiveCell,
+    setSingleSelection,
+    strokeColor,
+    strokeWidth,
+    symbolSize,
+    syncMultiPathExtents,
+    toggleSelection,
+    undo,
+    updateLabelOffsetEditorFromObject,
+    updateProperties
   });
 
   const canvasRenderer = window.HandballCanvasRenderer.createCanvasRenderer({
@@ -6455,7 +4030,7 @@
     sampledMultiPathPoints, offsetSampledPoints, sampledCurvePoints,
     bezierPoint, bezierTangent, objectSupportsLabel, getLabelPosition,
     sampledMidAndTangent,
-    getCourtSettings: () => courtSettings, courtThemes, courtRect
+    getCourtSettings: () => editorState.courtSettings, courtThemes, courtRect
   });
 
   // Selection handles remain part of the editor overlay, after object rendering.
@@ -6464,7 +4039,12 @@
     if (isSelected) drawSelection(o);
   }
 
-  layoutGrid.value = `${layoutSettings.cols}x${layoutSettings.rows}`;
+  // Register touch capture handlers before normal pointer handlers.
+  tools.install();
+  mobile.install();
+  interactions.install();
+
+  layoutGrid.value = `${editorState.layoutSettings.cols}x${editorState.layoutSettings.rows}`;
   syncActiveCellSelect();
   syncCourtControlsFromActiveCell();
 
@@ -6475,7 +4055,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v92 =====
+  // ===== PWA / Service Worker v93 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -6486,7 +4066,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v92-reload';
+      const reloadKey = 'handballtrainer-sw-v93-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -6505,7 +4085,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v92 registration OK');
+        console.info('[Handballtrainer] Service Worker v93 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }
@@ -6515,12 +4095,3 @@
 </script>
 </body>
 </html>
-  canvas.addEventListener('dblclick', e => {
-    // Native dblclick fires only after both clicks have already been processed.
-    // Finishing is therefore handled in pointerdown using our own rapid-click detection.
-    if (drawing && isMultiPointPath(drawing)) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  });
-

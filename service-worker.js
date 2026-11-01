@@ -1,4 +1,4 @@
-const VERSION = 'v92';
+const VERSION = 'v93';
 const STATIC_CACHE = `handballtrainer-static-${VERSION}`;
 const NAV_CACHE = `handballtrainer-nav-${VERSION}`;
 
@@ -10,6 +10,10 @@ const STATIC_ASSETS = [
   './js/selection.js',
   './js/geometry.js',
   './js/object-model.js',
+  './js/renderer-court.js',
+  './js/tools.js',
+  './js/mobile.js',
+  './js/interactions.js',
   './js/renderer-canvas.js',
   './js/renderer-svg.js',
   './README.md',

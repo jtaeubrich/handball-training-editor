@@ -182,9 +182,11 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v92)
+## Entwicklung und Regressionstests (v93)
 
-Das objektbezogene Canvas-Rendering liegt in `js/renderer-canvas.js`, das SVG-Rendering einschließlich Spielfeld in `js/renderer-svg.js`. Beide Renderer erhalten ihre benötigten Geometrie- und Beschriftungsfunktionen ausdrücklich vom Editor. Auswahlrahmen, Handles und Bedienlogik bleiben in `index.html`.
+Das objektbezogene Canvas-Rendering liegt in `js/renderer-canvas.js`, das SVG-Rendering einschließlich Spielfeld in `js/renderer-svg.js`. `js/renderer-court.js` zeichnet die Canvas-Spielfelder, Raster und Storyboards. Die Renderer erhalten ihre benötigten Geometrie- und Beschriftungsfunktionen ausdrücklich vom Editor. Auswahlrahmen und die Verbindung der Module bleiben in `index.html`.
+
+`js/tools.js` verwaltet Werkzeugwechsel, Gruppen, Varianten und die gespeicherte Werkzeugreihenfolge. `js/interactions.js` behandelt Platzieren, Verschieben, Kopieren, Drehen, Auswahlrechtecke, Pfadpunkte, Beschriftungsversatz und Tastenkürzel. `js/mobile.js` bündelt mobile Menüs, die Weiterleitung der Einstellungen sowie Touch-, Zoom- und Verschiebegesten. Die Module teilen den ausdrücklich übergebenen `editorState`; Bedienelemente und Aktionen werden als Abhängigkeiten übergeben. Die einmalige Installation registriert Touch-Capture vor den normalen Pointer-Handlern. Wiederholte Installation erzeugt keine doppelten Handler.
 
 `js/object-model.js` verwaltet die Objekttypen, Werkzeugklassifizierung, Beschriftungslisten, Standardwerte für neue Symbole, Pfade und Freihandzeichnungen sowie die bisherige Normalisierung geladener Objekte. Das Modul benötigt keinen DOM-Zugriff. Aktuelle Werkzeugwerte und die vom Spielfeld abhängige Spielerdrehung werden beim Erstellen übergeben. Bestehende Unterschiede zwischen neuen und geladenen Objekten bleiben erhalten; unbekannte Projektfelder werden nicht entfernt.
 
@@ -192,11 +194,13 @@ Die Objektmodelltests vergleichen Symbolvorgaben und die Aufbereitung älterer O
 
 Die Referenzwerte des Objektmodells lassen sich mit `node tests/capture-object-model-baseline.cjs` aus diesem ursprünglichen Commit erneut erzeugen. Das Skript benötigt dessen lokale Git-Historie und liest keine Vorgaben der aktuellen Implementierung.
 
-Tests ausführen: `npm ci`, `npx playwright install chromium`, danach `npm run test:e2e`. Der Testserver benötigt nur Node.js. GitHub Actions verwendet dieselben Abhängigkeiten aus `package-lock.json`; überholte Testläufe derselben Branch werden durch die bestehende concurrency-Regel abgebrochen.
+Tests ausführen: `npm ci`, `npx playwright install chromium firefox`, danach `npm run test:e2e`. Der Testserver benötigt nur Node.js. Die Desktop-Tests laufen in Chromium und Firefox. Der Test mit injizierten echten Mehrfinger-Ereignissen nutzt das Chromium-Debugging-Protokoll und wird nur in Chromium ausgeführt. GitHub Actions verwendet dieselben Abhängigkeiten aus `package-lock.json`; überholte Testläufe derselben Branch werden durch die bestehende concurrency-Regel abgebrochen.
 
 Die Renderingtests vergleichen Canvas-Zeichenbefehle und SVG-Ausgaben mit dem Stand v89 (Commit `49627eac1f8e32a7af7eb032919c7a37c1653051`). Die Referenzfälle decken alle Symbole und Pfadvarianten, Beschriftungen, Pfade ohne Länge sowie SVG-Spielfelder ab. Formatierungs-Einrückungen und numerische Unterschiede jenseits von acht Nachkommastellen werden beim Vergleich ignoriert.
 
 Referenzwerte nur bei beabsichtigten Änderungen erneuern: Testserver mit `node tests/server.cjs` starten, dann in einem zweiten Terminal `node tests/capture-rendering-baseline.cjs` ausführen. Das Skript liest ausdrücklich den ursprünglichen v89-Commit aus der lokalen Git-Historie; es übernimmt keine Ausgaben der aktuellen Implementierung.
+
+Die Canvas-Spielfeldtests vergleichen 50 Konfigurationen mit v92 (`e03520a4257d58b017f92f3607e07948095d5ca3`): alle Spielfeldmodi und Drehungen, zwei Farbschemata, Raster sowie gemischte Storyboards und Sektortransparenzen. Diese Referenzen lassen sich bei laufendem Testserver mit `node tests/capture-court-baseline.cjs` aus dem ursprünglichen Commit erzeugen.
 
 ## Hinweis
 

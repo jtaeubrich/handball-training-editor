@@ -12,7 +12,8 @@ function installRenderCapture() {
   window.__renderers = {};
   for (const [globalName, factory, key] of [
     ['HandballCanvasRenderer', 'createCanvasRenderer', 'canvas'],
-    ['HandballSvgRenderer', 'createSvgRenderer', 'svg']
+    ['HandballSvgRenderer', 'createSvgRenderer', 'svg'],
+    ['HandballCourtRenderer', 'createCourtRenderer', 'court']
   ]) {
     Object.defineProperty(window, globalName, {
       configurable: true,

@@ -278,20 +278,8 @@ test('browser without file picker downloads under the loaded name and explains t
 });
 
 test('feeder uses attacker blue and remains fully filled', async ({ page }) => {
-  await page.evaluate(() => {
-    const feeder = document.querySelector('.tool[data-tool="feeder"]');
-    feeder.click();
-    const canvas = document.querySelector('#c');
-    const rect = canvas.getBoundingClientRect();
-    const ev = new PointerEvent('pointerdown', {
-      bubbles: true,
-      pointerId: 1,
-      pointerType: 'mouse',
-      clientX: rect.left + 250,
-      clientY: rect.top + 250
-    });
-    canvas.dispatchEvent(ev);
-  });
+  await page.locator('.tool[data-tool="feeder"]').first().evaluate(button => button.click());
+  await page.locator('#c').click({ position: { x: 250, y: 250 } });
 
   const project = await page.evaluate(() => {
     const c = document.querySelector('#c');

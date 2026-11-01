@@ -36,16 +36,24 @@ async function drag(page,x1,y1,x2,y2){
   const a=await at(page,x1,y1),b=await at(page,x2,y2);
   await page.mouse.move(a.x,a.y);await page.mouse.down();await page.mouse.move(b.x,b.y,{steps:5});await page.mouse.up();
 }
+// Firefox quantizes injected mouse coordinates to CSS pixels; canvas bounds can
+// start on a half pixel. Keep a one-pixel input tolerance, but compare undo
+// snapshots exactly so rounding cannot conceal lost object state.
+function expectPoint(object,x,y){
+  expect(Math.abs(object.x-x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(object.y-y)).toBeLessThanOrEqual(1);
+}
 
 test('dragging a symbol commits its position and supports keyboard undo/redo',async({page})=>{
   await choose(page,'feeder');await click(page,240,240);
+  const original=(await project(page)).objects[0];
   await page.locator('#selectBtn').click();
   await drag(page,240,240,290,280);
-  expect((await project(page)).objects[0]).toMatchObject({x:290,y:280});
+  const moved=(await project(page)).objects[0];expectPoint(moved,290,280);
   await page.keyboard.press('Control+z');
-  expect((await project(page)).objects[0]).toMatchObject({x:240,y:240});
+  expect((await project(page)).objects[0]).toEqual(original);
   await page.keyboard.press('Control+y');
-  expect((await project(page)).objects[0]).toMatchObject({x:290,y:280});
+  expect((await project(page)).objects[0]).toEqual(moved);
 });
 
 test('rectangle selection moves a group and Delete removes it',async({page})=>{
@@ -53,19 +61,21 @@ test('rectangle selection moves a group and Delete removes it',async({page})=>{
   await page.locator('#selectBtn').click();await drag(page,150,170,350,270);
   await expect(page.locator('#propType')).toHaveText('2 Objekte');
   await drag(page,200,220,230,260);
-  expect((await project(page)).objects.map(o=>({x:o.x,y:o.y}))).toEqual([{x:230,y:260},{x:330,y:260}]);
+  const moved=(await project(page)).objects;expectPoint(moved[0],230,260);expectPoint(moved[1],330,260);
+  expect(moved[1].x-moved[0].x).toBe(100);expect(moved[1].y).toBe(moved[0].y);
   await page.keyboard.press('Delete');expect((await project(page)).objects).toEqual([]);
   await page.locator('#undoBtn').click();expect((await project(page)).objects).toHaveLength(2);
 });
 
 test('modifier duplication leaves the source object in place',async({page})=>{
   await choose(page,'feeder');await click(page,240,240);
+  const original=(await project(page)).objects[0];
   await page.locator('#selectBtn').click();await click(page,240,240);
   await page.keyboard.down('Control');await drag(page,240,240,300,280);await page.keyboard.up('Control');
   const objects=(await project(page)).objects;
   expect(objects).toHaveLength(2);
-  expect(objects[0]).toMatchObject({x:240,y:240});
-  expect(objects[1]).toMatchObject({x:300,y:280});
+  expect(objects[0]).toEqual(original);
+  expectPoint(objects[1],300,280);
 });
 
 test('rotation handle rotates a selected player and undo restores it',async({page})=>{
@@ -76,7 +86,7 @@ test('rotation handle rotates a selected player and undo restores it',async({pag
   const x=original.x+Math.sin(angle)*dist,y=original.y-Math.cos(angle)*dist;
   await drag(page,x,y,original.x+Math.cos(angle)*dist,original.y+Math.sin(angle)*dist);
   const rotated=(await project(page)).objects[0];
-  expect((rotated.rotation-original.rotation+360)%360).toBeCloseTo(90,2);
+  expect(Math.abs((rotated.rotation-original.rotation+360)%360-90)).toBeLessThanOrEqual(2);
   await page.locator('#undoBtn').click();expect((await project(page)).objects[0]).toEqual(original);
 });
 
@@ -88,11 +98,10 @@ test('path endpoints and Bezier controls remain editable',async({page})=>{
   await click(page,middle.x,middle.y);
   await drag(page,original.x2,original.y2,440,330);
   const endpoint=(await project(page)).objects[0];
-  expect(endpoint).toMatchObject({x2:440,y2:330});
+  expectPoint({x:endpoint.x2,y:endpoint.y2},440,330);
   await drag(page,endpoint.cx1,endpoint.cy1,endpoint.cx1+20,endpoint.cy1-30);
   const edited=(await project(page)).objects[0];
-  expect(edited.cx1).toBeCloseTo(endpoint.cx1+20,4);
-  expect(edited.cy1).toBeCloseTo(endpoint.cy1-30,4);
+  expectPoint({x:edited.cx1,y:edited.cy1},endpoint.cx1+20,endpoint.cy1-30);
 });
 
 test('Escape cancels a multi-point preview and double click finishes once',async({page})=>{

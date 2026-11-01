@@ -187,6 +187,7 @@ test('loaded project saves back to the same file handle and name', async ({ page
   await expect(page.locator('#status')).toContainText('Projekt geladen: training-test.json');
 
   await page.getByRole('button', { name: 'Projekt speichern' }).click();
+  await expect(page.locator('#status')).toContainText('Projekt gespeichert: training-test.json');
 
   const result = await page.evaluate(() => ({
     writes: window.__fileTestState.writes.length,
@@ -235,29 +236,14 @@ test('feeder uses attacker blue and remains fully filled', async ({ page }) => {
 });
 
 test('desktop label offset control can be scrolled fully into view', async ({ page }) => {
-  await page.evaluate(() => {
-    const btn = document.querySelector('.tool[data-tool="attacker"]');
-    btn.click();
+  await page.locator('.tool[data-tool="attacker"]').click();
+  await page.locator('#c').click({ position: { x: 300, y: 300 } });
 
-    const canvas = document.querySelector('#c');
-    const rect = canvas.getBoundingClientRect();
-    canvas.dispatchEvent(new PointerEvent('pointerdown', {
-      bubbles: true,
-      pointerId: 2,
-      pointerType: 'mouse',
-      clientX: rect.left + 300,
-      clientY: rect.top + 300
-    }));
-  });
-
-  const editor = page.locator('#labelOffsetEditor');
   await expect(page.locator('#labelProps')).toBeVisible();
-  await expect(editor).toBeVisible();
+  await expect(page.locator('#labelOffsetEditor')).toBeVisible();
 
-  await page.evaluate(() => {
-    document.querySelector('#labelOffsetEditor').scrollIntoView({
-      block:'end'
-    });
+  await page.locator('#labelOffsetEditor').evaluate(el => {
+    el.scrollIntoView({ block:'end' });
   });
 
   const boxes = await page.evaluate(() => {

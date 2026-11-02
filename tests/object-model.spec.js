@@ -113,7 +113,7 @@ test('legacy project load-save-load preserves normalized objects and custom data
   const first = await page.evaluate(() => JSON.parse(window.__projectWrites[0]));
   const expected = await page.evaluate(objects => objects.map(window.HandballObjectModel.normalizeLoadedObject),objects);
   expect(first.objects).toEqual(expected);
-  expect(first.version).toBe(99);
+  expect(first.version).toBe(100);
   await load(first);
   await page.locator('#jsonSaveBtn').click();
   await expect.poll(() => page.evaluate(() => window.__projectWrites.length)).toBe(2);

@@ -57,7 +57,7 @@ test('preflight works only for configured origins and auth is mandatory',async t
 test('unconfigured services are inert and health does not expose configuration',async t=>{
   const s=await service(t,{env:{}});
   const response=await s.post();assert.equal(response.status,503);assert.equal(s.calls(),0);
-  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true});
+  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:2});
 });
 
 test('static serving cannot disclose environment files, Git data or server sources',async t=>{
@@ -139,4 +139,45 @@ test('coordinate frames invert correctly at all rotations and retain full-field 
     assert.ok(Math.abs(result.x-original.x)<1e-8);assert.ok(Math.abs(result.y-original.y)<1e-8);
   }
   assert.throws(()=>validateRequest({...body,scene:{...scene,mode:'full'}}));
+});
+
+test('label_offset is available in the strict schema and the OpenAI adapter',async()=>{
+  const reply={message:'Label steht oberhalb des Spielers.',commands:[
+    validReply.commands[0],{op:'label_offset',target:'new1',x:0,y:-40}
+  ]};
+  const command=protocol.replySchema.properties.commands.items.anyOf.find(s=>s.properties.op.enum[0]==='label_offset');
+  assert.deepEqual(command.properties.x,{type:'integer',minimum:-50,maximum:50});
+  assert.equal(command.additionalProperties,false);
+  const result=await requestOpenAI(body,{apiKey:'fake',model:'test',fetchImpl:async(_url,options)=>{
+    const request=JSON.parse(options.body);
+    assert.ok(request.instructions.includes('label_offset'));assert.ok(request.instructions.includes('KEINE Meter'));
+    return upstream(reply);
+  }});
+  assert.deepEqual(result,reply);
+});
+
+test('context accepts bounded offsets and legacy clients without offset fields',()=>{
+  const object={id:'object-0',kind:'symbol',type:'attacker',label:'1',x:8,y:9,points:[]};
+  for(const extra of [{},{labelOffsetX:-50,labelOffsetY:50}]){
+    assert.doesNotThrow(()=>validateRequest({...body,scene:{...scene,objects:[{...object,...extra}]}}));
+  }
+  for(const extra of [{labelOffsetX:0},{labelOffsetX:51,labelOffsetY:0},{labelOffsetX:0,labelOffsetY:-Infinity}]){
+    assert.throws(()=>validateRequest({...body,scene:{...scene,objects:[{...object,...extra}]}}));
+  }
+});
+
+test('invalid offsets and unsupported targets reject the whole command batch',()=>{
+  const offset={op:'label_offset',target:'new1',x:0,y:0};
+  const batch=c=>({message:'Versatz',commands:[validReply.commands[0],c]});
+  for(const command of [
+    {...offset,x:51},{...offset,y:-51},{...offset,x:NaN},{...offset,y:Infinity},
+    {...offset,x:1.5},{...offset,x:'10'},{...offset,target:'missing'},
+    {...offset,pixels:10},{op:'label_offset',target:'new1',x:10}
+  ])assert.throws(()=>protocol.validateReply(batch(command),scene));
+  for(const type of ['goalkeeper','feeder','airbody']){
+    assert.throws(()=>protocol.validateReply({message:'Versatz',commands:[
+      {...validReply.commands[0],type,label:''},offset
+    ]},scene));
+  }
+  assert.doesNotThrow(()=>protocol.validateReply(batch({...offset,x:-50,y:50}),scene));
 });

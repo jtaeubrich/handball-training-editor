@@ -26,7 +26,7 @@ Container hinter einem HTTPS-Reverse-Proxy oder auf einem Containerhost starten.
 docker run --rm --env-file server/.env -e HOST=0.0.0.0 -e SERVE_EDITOR=false -p 127.0.0.1:8787:8787 handball-ki
 ```
 
-Der Proxy leitet `/api/chat` an Port 8787 weiter. Gesundheitstest: `GET /health` liefert `{"ok":true}`. Der Dienst selbst spricht HTTP; TLS übernimmt der Host/Proxy. Im Container werden Editor und Secrets nicht ausgeliefert. Die statische Auslieferung ist nur eine lokale Entwicklungshilfe.
+Der Proxy leitet `/api/chat` an Port 8787 weiter. Gesundheitstest: `GET /health` liefert `{"ok":true,"commandVersion":2}`. `commandVersion:2` bestätigt die Unterstützung des Beschriftungsversatzes. Der Dienst selbst spricht HTTP; TLS übernimmt der Host/Proxy. Im Container werden Editor und Secrets nicht ausgeliefert. Die statische Auslieferung ist nur eine lokale Entwicklungshilfe.
 
 Der Zugangscode schützt die kostenpflichtige Schnittstelle und sollte nur an berechtigte Nutzer verteilt werden. Für eine größere öffentliche Nutzergruppe ist vor der Freigabe eine Nutzeranmeldung mit eigenen Kontingenten nötig. Der Dienst erlaubt derzeit insgesamt 20 Anfragen pro Minute und 2 parallele Anfragen **pro Prozess**. OpenAI-Aufrufe haben 45 Sekunden Zeit und höchstens 6.000 Ausgabe-Tokens. Den Verbrauch zusätzlich im OpenAI-Projekt überwachen. Mehrere Dienstinstanzen benötigen gemeinsame Limits; die aktuellen Zähler sind im Arbeitsspeicher.
 
@@ -37,6 +37,8 @@ Der Zugangscode schützt die kostenpflichtige Schnittstelle und sollte nur an be
 Unterstützt werden Spieler und Geräte, Nummern und freie Labels, gerade/komplexe/Mehrpunkt-Wege, Verschieben, Beschriften und gezieltes Löschen. Positionen sind Meter im ungedrehten Feld. Die vorhandene Felddrehung wird im Editor berücksichtigt. Im Halbfeld liegt das Tor oben bei (10,0), bei einem Ganzfeld liegen die Tore links/rechts bei (0,10)/(40,10). „Links“ bedeutet links im ungedrehten Feld, nicht links auf dem gedrehten Bildschirm. `mode=none` verwendet eine abstrakte Fläche 20×20. Storyboard-Anlage und Spielfeldänderungen sind in dieser Ausbaustufe nicht vorgesehen.
 
 `js/ai-commands.js` definiert Schema, Validierung, Koordinatenumrechnung und atomare Änderungen. `server/openai.cjs` ist der austauschbare Anbieteradapter. `store:false` deaktiviert das Speichern des Response-Objekts bei OpenAI; dies ist keine Zusage einer allgemeinen Nullspeicherung. Der Server schreibt weder Chattexte noch API-Schlüssel in Logs.
+
+`label_offset` setzt die Beschriftungsposition für `attacker`, `attackerBall`, `defender` und alle unterstützten Pfade. Beispiel: `{"op":"label_offset","target":"object-0","x":0,"y":-30}`. Beide Achsen sind absolute ganzzahlige Canvas-Pixel im Bereich −50 bis +50; positive Werte zeigen rechts/unten. Der Versatz wird unabhängig von Zoom und Felddrehung in den Achsen der Zeichenfläche gesetzt. Er verschiebt das Label, verändert aber weder Objektposition noch Labeltext oder Sichtbarkeit. Der Befehl ist auch nach `add_symbol` oder `add_path` mit der neu vergebenen ID in derselben Antwort nutzbar. Für relative Folgeanweisungen enthält der aktuelle Skizzenkontext `labelOffsetX` und `labelOffsetY`. Ältere v99-Kontexte ohne beide Felder bleiben gültig. Editor und Dienst müssen für diesen Befehl aktualisiert sein; den Dienst zuerst bereitstellen.
 
 ## Tests
 

@@ -286,6 +286,24 @@
         if (!original) return;
 
         const clone = original.cloneNode(true);
+        if (deps.pathTools.has(toolName)) {
+          const action = deps.typeNames[deps.basePathType(toolName)] || toolName;
+          const variant = deps.isMultiPointPath(toolName)
+            ? 'Mehrpunkt' : deps.isComplexPath(toolName) ? 'Komplex' : 'Einfach';
+          const icon = clone.querySelector('.ico');
+          const caption = document.createElement('span');
+          caption.className = 'mobile-tool-caption';
+          const name = document.createElement('span');
+          name.className = 'mobile-tool-name';
+          name.textContent = action;
+          const detail = document.createElement('span');
+          detail.className = 'mobile-tool-variant';
+          detail.textContent = variant;
+          caption.append(name, detail);
+          clone.replaceChildren(...(icon ? [icon, caption] : [caption]));
+          clone.classList.add('mobile-action-tool');
+          clone.setAttribute('aria-label', `${action} – ${variant}`);
+        }
         clone.classList.toggle('active', editorState.tool === toolName);
         clone.addEventListener('click', () => {
           deps.setTool(toolName);

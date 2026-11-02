@@ -182,11 +182,13 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v93)
+## Entwicklung und Regressionstests (v94)
 
 Das objektbezogene Canvas-Rendering liegt in `js/renderer-canvas.js`, das SVG-Rendering einschließlich Spielfeld in `js/renderer-svg.js`. `js/renderer-court.js` zeichnet die Canvas-Spielfelder, Raster und Storyboards. Die Renderer erhalten ihre benötigten Geometrie- und Beschriftungsfunktionen ausdrücklich vom Editor. Auswahlrahmen und die Verbindung der Module bleiben in `index.html`.
 
 `js/tools.js` verwaltet Werkzeugwechsel, Gruppen, Varianten und die gespeicherte Werkzeugreihenfolge. `js/interactions.js` behandelt Platzieren, Verschieben, Kopieren, Drehen, Auswahlrechtecke, Pfadpunkte, Beschriftungsversatz und Tastenkürzel. `js/mobile.js` bündelt mobile Menüs, die Weiterleitung der Einstellungen sowie Touch-, Zoom- und Verschiebegesten. Die Module teilen den ausdrücklich übergebenen `editorState`; Bedienelemente und Aktionen werden als Abhängigkeiten übergeben. Die einmalige Installation registriert Touch-Capture vor den normalen Pointer-Handlern. Wiederholte Installation erzeugt keine doppelten Handler.
+
+Die mobile Wege-Auswahl nennt auf jeder Schaltfläche die Aktion (z. B. Laufweg, Ballweg / Passweg oder Torwurf) und darunter die Variante Einfach, Komplex oder Mehrpunkt. Tests prüfen alle 21 Varianten auf 320 und 390 Pixel breiten Ansichten sowie die unveränderte Werkzeugauswahl.
 
 `js/object-model.js` verwaltet die Objekttypen, Werkzeugklassifizierung, Beschriftungslisten, Standardwerte für neue Symbole, Pfade und Freihandzeichnungen sowie die bisherige Normalisierung geladener Objekte. Das Modul benötigt keinen DOM-Zugriff. Aktuelle Werkzeugwerte und die vom Spielfeld abhängige Spielerdrehung werden beim Erstellen übergeben. Bestehende Unterschiede zwischen neuen und geladenen Objekten bleiben erhalten; unbekannte Projektfelder werden nicht entfernt.
 

@@ -2,6 +2,7 @@ const { test, expect } = require('@playwright/test');
 const { createHash } = require('node:crypto');
 const baseline = require('./fixtures/rendering-v89.json');
 const { installRenderCapture, measureObject, normalizeSvg } = require('./render-helpers.cjs');
+const {legacySvgGoals} = require('./legacy-goal-width.cjs');
 
 const hash = value => createHash('sha256').update(value).digest('hex');
 
@@ -46,7 +47,7 @@ test('feeder stays fully blue on Canvas; Air Body exports a filled silhouette', 
   expect(result.curve).toContain('C');
 });
 
-test('SVG courts retain v89 output for every mode and rotation', async ({ page }) => {
+test('SVG courts retain v89 output apart from corrected goal width at every rotation', async ({ page }) => {
   for (const fixture of baseline.courts) {
     const svg = await page.evaluate(({mode,rotation,theme}) => {
       for (const [id,value] of [['courtMode',mode],['courtRotation',rotation],['courtTheme',theme]]) {
@@ -56,7 +57,20 @@ test('SVG courts retain v89 output for every mode and rotation', async ({ page }
       }
       return window.__renderers.svg.svgCourt();
     }, fixture);
-    expect(hash(normalizeSvg(svg)), `${fixture.mode}/${fixture.rotation}/${fixture.theme}`).toBe(fixture.svgHash);
+    const dimensions=await page.evaluate(svg=>{
+      const doc=new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${svg}</svg>`,'image/svg+xml');
+      const rect=el=>Object.fromEntries(['x','y','width','height'].map(k=>[k,+el.getAttribute(k)]));
+      return {field:doc.querySelector('rect[stroke-width="3"]')?rect(doc.querySelector('rect[stroke-width="3"]')):null,
+        goals:[...doc.querySelectorAll('rect[stroke-width="4"]')].map(rect)};
+    },svg);
+    expect(dimensions.goals).toHaveLength(fixture.mode==='none'?0:fixture.mode==='half'?1:2);
+    for(const goal of dimensions.goals){
+      const field=dimensions.field;
+      expect(Math.max(goal.width,goal.height)/Math.min(field.width,field.height)).toBeCloseTo(3/20,8);
+      if(fixture.mode==='half')expect(goal.x+goal.width/2).toBeCloseTo(field.x+field.width/2,8);
+      else expect(goal.y+goal.height/2).toBeCloseTo(field.y+field.height/2,8);
+    }
+    expect(hash(normalizeSvg(legacySvgGoals(svg))), `${fixture.mode}/${fixture.rotation}/${fixture.theme}`).toBe(fixture.svgHash);
   }
 });
 

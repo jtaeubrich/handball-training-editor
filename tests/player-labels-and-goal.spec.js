@@ -67,7 +67,7 @@ test('numbered players can be imported and edited on a smartphone',async({page})
 });
 
 for(const mode of ['half','full']){
-  test(`smartphone ${mode} court: goals are centered and 10% of the goal-line width`,async({page})=>{
+  test(`smartphone ${mode} court: goals are centered and 3m on a 20m goal-line width`,async({page})=>{
     await page.setViewportSize({width:390,height:844});
     await page.addInitScript(installRenderCapture);await page.goto('/');
     await page.evaluate(configureCourtScenario,{layout:'1x1',cells:[{mode,rotation:mode==='full'?90:0,theme:'gray',grid:false}]});
@@ -98,7 +98,7 @@ for(const mode of ['half','full']){
     expect(result.fieldWidth).toBeLessThanOrEqual(result.viewportWidth-28);
     expect(result.fieldWidth).toBeGreaterThan(result.viewportWidth-45);
     for(const goal of result.goals){
-      expect(goal.width/result.fieldWidth).toBeCloseTo(0.1,6);
+      expect(goal.width/result.fieldWidth).toBeCloseTo(3/20,6);
       expect(Math.abs(goal.center-result.viewportWidth/2)).toBeLessThan(2);
     }
   });

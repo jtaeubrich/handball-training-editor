@@ -992,7 +992,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v94</span>
+    <span>Einstellungen · v95</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1198,7 +1198,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v94</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v95</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1811,6 +1811,7 @@
 </div>
 
 <script src="./js/project-io.js"></script>
+<script src="./js/local-draft.js"></script>
 <script src="./js/export.js"></script>
 <script src="./js/state-history.js"></script>
 <script src="./js/selection.js"></script>
@@ -1825,6 +1826,7 @@
 <script>
 (() => {
   const editorState = {};
+  let localDraft = null;
 
   const canvas = document.getElementById('c');
   const ctx = canvas.getContext('2d');
@@ -1888,6 +1890,7 @@
     const clamped = Math.max(25, Math.min(200, +percent || 100));
     editorState.canvasZoom = clamped / 100;
     applyCanvasZoom();
+    localDraft?.schedule();
   }
 
   const canvasSizes = {
@@ -2520,6 +2523,7 @@
 
   function commit() {
     historyManager.commit(editorState.objects);
+    localDraft?.flush();
   }
 
   function undo() {
@@ -2529,6 +2533,7 @@
     clearSelection();
     updateProperties();
     draw();
+    localDraft?.flush();
   }
 
   function redo() {
@@ -2538,6 +2543,7 @@
     clearSelection();
     updateProperties();
     draw();
+    localDraft?.flush();
   }
 
   const helpBtn = document.getElementById('helpBtn');
@@ -2961,6 +2967,7 @@
     editorState.objects.forEach((o,i) => drawObject(ctx,o,editorState.selectedIndices.has(i)));
     drawGroupRotationOverlay();
     drawSelectionRectOverlay();
+    localDraft?.schedule();
   }
 
   function drawGroupRotationOverlay() {
@@ -3827,9 +3834,9 @@
     }
   }
 
-  async function saveProject() {
-    const data = {
-      version: 94,
+  function getProjectData() {
+    return {
+      version: 95,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
@@ -3841,6 +3848,10 @@
       cellCourts: editorState.cellCourts.map(cloneCourtSettings),
       objects:editorState.objects
     };
+  }
+
+  async function saveProject() {
+    const data = getProjectData();
 
     const blob = new Blob(
       [JSON.stringify(data,null,2)],
@@ -3850,56 +3861,61 @@
     await projectFileController.saveProjectBlob(blob);
   }
 
+  function applyProjectData(data) {
+    if (!data || !Array.isArray(data.objects)) throw new Error('Ungültiges Projektformat.');
+
+    const savedCanvasWidth = data.canvas && Number.isFinite(+data.canvas.width) ? +data.canvas.width : 1100;
+    const savedCanvasHeight = data.canvas && Number.isFinite(+data.canvas.height) ? +data.canvas.height : 720;
+
+    canvas.width = savedCanvasWidth;
+    canvas.height = savedCanvasHeight;
+
+    editorState.objects=data.objects.map(objectModel.normalizeLoadedObject);
+
+    if (data.layout) {
+      editorState.layoutSettings = {
+        cols: Math.max(1, Math.min(4, +data.layout.cols || 1)),
+        rows: Math.max(1, Math.min(2, +data.layout.rows || 1)),
+        activeCell: Math.max(0, +data.layout.activeCell || 0)
+      };
+      editorState.canvasZoom = Math.max(0.25, Math.min(2, (+data.layout.zoomPercent || 100) / 100));
+    } else {
+      editorState.layoutSettings = { cols:1, rows:1, activeCell:0 };
+      editorState.canvasZoom = 1;
+    }
+
+    if (Array.isArray(data.cellCourts) && data.cellCourts.length) {
+      editorState.cellCourts = data.cellCourts.map(cloneCourtSettings);
+    } else if (data.court) {
+      editorState.cellCourts = [cloneCourtSettings(data.court)];
+    } else {
+      editorState.cellCourts = [cloneCourtSettings(makeDefaultCourtSettings())];
+    }
+
+    ensureCellCourts();
+    layoutGrid.value = `${editorState.layoutSettings.cols}x${editorState.layoutSettings.rows}`;
+    setActiveCell(editorState.layoutSettings.activeCell, false);
+
+    resizeCanvasForStoryboard();
+
+    clearSelection();
+    historyManager.reset(editorState.objects);
+  }
+
   function loadProject(file, fileHandle=null) {
     const reader=new FileReader();
 
     reader.onload=() => {
       try {
         const data=JSON.parse(reader.result);
-        if (!data || !Array.isArray(data.objects)) throw new Error('Ungültiges Projektformat.');
-
-        const savedCanvasWidth = data.canvas && Number.isFinite(+data.canvas.width) ? +data.canvas.width : 1100;
-        const savedCanvasHeight = data.canvas && Number.isFinite(+data.canvas.height) ? +data.canvas.height : 720;
-
-        canvas.width = savedCanvasWidth;
-        canvas.height = savedCanvasHeight;
-
-        editorState.objects=data.objects.map(objectModel.normalizeLoadedObject);
-
-        if (data.layout) {
-          editorState.layoutSettings = {
-            cols: Math.max(1, Math.min(4, +data.layout.cols || 1)),
-            rows: Math.max(1, Math.min(2, +data.layout.rows || 1)),
-            activeCell: Math.max(0, +data.layout.activeCell || 0)
-          };
-          editorState.canvasZoom = Math.max(0.25, Math.min(2, (+data.layout.zoomPercent || 100) / 100));
-        } else {
-          editorState.layoutSettings = { cols:1, rows:1, activeCell:0 };
-          editorState.canvasZoom = 1;
-        }
-
-        if (Array.isArray(data.cellCourts) && data.cellCourts.length) {
-          editorState.cellCourts = data.cellCourts.map(cloneCourtSettings);
-        } else if (data.court) {
-          editorState.cellCourts = [cloneCourtSettings(data.court)];
-        } else {
-          editorState.cellCourts = [cloneCourtSettings(makeDefaultCourtSettings())];
-        }
-
-        ensureCellCourts();
-        layoutGrid.value = `${editorState.layoutSettings.cols}x${editorState.layoutSettings.rows}`;
-        setActiveCell(editorState.layoutSettings.activeCell, false);
-
-        resizeCanvasForStoryboard();
-
-        clearSelection();
-        historyManager.reset(editorState.objects);
+        applyProjectData(data);
 
         const loadedProjectName = projectFileController.setLoadedFile(file, fileHandle);
 
         updateProperties();
         draw();
         status.textContent = `Projekt geladen: ${loadedProjectName}`;
+        localDraft?.flush();
       } catch(err) {
         alert('Projekt konnte nicht geladen werden: ' + err.message);
       }
@@ -4073,6 +4089,36 @@
   mobile.install();
   interactions.install();
 
+  localDraft = window.HandballLocalDraft.createLocalDraft({
+    getSnapshot: () => ({
+      project:getProjectData(),
+      fileName:projectFileController.getCurrentName(),
+      pendingObject:editorState.drawing && !editorState.objects.includes(editorState.drawing)
+        ? editorState.drawing : null
+    }),
+    restoreSnapshot: snapshot => {
+      const data = snapshot.project;
+      const pending = snapshot.pendingObject;
+      // Finish recoverable strokes; pointer capture and drag state cannot survive a restart.
+      if (pending && ['path','freehand'].includes(pending.kind)) {
+        const longEnough = Array.isArray(pending.points)
+          ? polylineLength(pending.points) > 6
+          : Math.hypot(pending.x2-pending.x1,pending.y2-pending.y1) > 6;
+        if (longEnough) data.objects.push(pending);
+      }
+      applyProjectData(data);
+      projectFileController.setLoadedFile({name:typeof snapshot.fileName === 'string'
+        ? snapshot.fileName : 'handball-skizze.json'});
+      status.textContent = 'Letzte Zeichnung lokal wiederhergestellt';
+    },
+    onError: message => { status.textContent = message; }
+  });
+  localDraft.restore();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) localDraft.flush();
+  }, {capture:true});
+  window.addEventListener('pagehide', () => localDraft.flush());
+
   layoutGrid.value = `${editorState.layoutSettings.cols}x${editorState.layoutSettings.rows}`;
   syncActiveCellSelect();
   syncCourtControlsFromActiveCell();
@@ -4084,7 +4130,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v94 =====
+  // ===== PWA / Service Worker v95 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4095,7 +4141,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v94-reload';
+      const reloadKey = 'handballtrainer-sw-v95-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4114,7 +4160,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v94 registration OK');
+        console.info('[Handballtrainer] Service Worker v95 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

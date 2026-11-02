@@ -143,6 +143,10 @@ Diese Elemente können ebenfalls verschoben, skaliert, eingefärbt und – sowei
 
 ### Speichern und Export
 
+Ab v95 wird die letzte Zeichnung automatisch lokal in diesem Browser auf diesem Gerät gesichert und beim nächsten Start wieder angezeigt. Gespeichert werden Objekte, Beschriftungen, Spielfeld, Storyboard, Zoom und der bisherige Projektname. Änderungen werden während der Arbeit und beim Wechsel in den Hintergrund gesichert. Erkennbare Teile unterbrochener Pfade und Freihandzeichnungen werden beim Wiederöffnen als bearbeitbare Objekte übernommen. **Zeichnung leeren** sichert bewusst auch den leeren Stand.
+
+Diese lokale Sicherung ersetzt keine Projektdatei und wird nicht zwischen Geräten übertragen. Beim Löschen der Websitedaten geht sie verloren; im privaten Browsermodus kann sie nach dem Schließen verschwinden. Die Berechtigung zum direkten Überschreiben einer zuvor geöffneten Datei wird beim Neustart nicht übernommen; deren Dateiname bleibt erhalten.
+
 Ab v91 speichert **Projekt speichern** in Browsern mit Dateizugriff (z. B. Chrome/Edge am Computer) direkt in die über **Projekt laden** geöffnete Datei. Falls das nicht möglich ist, öffnet sich ein Speicherdialog mit dem bisherigen Dateinamen und der geöffneten Datei als Startort. Öffnen und Speichern verwenden denselben gemerkten Projektordner; der Downloads-Ordner wird nicht mehr vorgegeben.
 
 Browser ohne diesen Dateizugriff geben beim Laden keinen ursprünglichen Ordner an die Webseite weiter. Hier entscheidet der Browser über den Download-Ordner. Für einen Speicherdialog bei jedem Download die Browser-Einstellung **Vor dem Speichern nachfragen** aktivieren; der Editor kann den ursprünglichen Ordner in diesem Fall nicht vorauswählen.
@@ -182,13 +186,15 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v94)
+## Entwicklung und Regressionstests (v95)
 
 Das objektbezogene Canvas-Rendering liegt in `js/renderer-canvas.js`, das SVG-Rendering einschließlich Spielfeld in `js/renderer-svg.js`. `js/renderer-court.js` zeichnet die Canvas-Spielfelder, Raster und Storyboards. Die Renderer erhalten ihre benötigten Geometrie- und Beschriftungsfunktionen ausdrücklich vom Editor. Auswahlrahmen und die Verbindung der Module bleiben in `index.html`.
 
 `js/tools.js` verwaltet Werkzeugwechsel, Gruppen, Varianten und die gespeicherte Werkzeugreihenfolge. `js/interactions.js` behandelt Platzieren, Verschieben, Kopieren, Drehen, Auswahlrechtecke, Pfadpunkte, Beschriftungsversatz und Tastenkürzel. `js/mobile.js` bündelt mobile Menüs, die Weiterleitung der Einstellungen sowie Touch-, Zoom- und Verschiebegesten. Die Module teilen den ausdrücklich übergebenen `editorState`; Bedienelemente und Aktionen werden als Abhängigkeiten übergeben. Die einmalige Installation registriert Touch-Capture vor den normalen Pointer-Handlern. Wiederholte Installation erzeugt keine doppelten Handler.
 
 Die mobile Wege-Auswahl nennt auf jeder Schaltfläche die Aktion (z. B. Laufweg, Ballweg / Passweg oder Torwurf) und darunter die Variante Einfach, Komplex oder Mehrpunkt. Tests prüfen alle 21 Varianten auf 320 und 390 Pixel breiten Ansichten sowie die unveränderte Werkzeugauswahl.
+
+`js/local-draft.js` verwaltet die lokale Sicherung unter dem versionsunabhängigen Schlüssel `handballtrainer.localDraft.v1`. Es speichert abgeschlossene Bearbeitungsschritte unmittelbar und laufende Zeichenänderungen höchstens alle 200 ms. `visibilitychange` und `pagehide` schreiben ausstehende Änderungen synchron; die Sicherung läuft bei Hintergrundwechsel vor der Touch-Bereinigung. Dateien und lokale Wiederherstellung verwenden dieselbe Aufbereitung der Projektdaten. Fehler beim Lesen oder Schreiben blockieren die Bearbeitung nicht.
 
 `js/object-model.js` verwaltet die Objekttypen, Werkzeugklassifizierung, Beschriftungslisten, Standardwerte für neue Symbole, Pfade und Freihandzeichnungen sowie die bisherige Normalisierung geladener Objekte. Das Modul benötigt keinen DOM-Zugriff. Aktuelle Werkzeugwerte und die vom Spielfeld abhängige Spielerdrehung werden beim Erstellen übergeben. Bestehende Unterschiede zwischen neuen und geladenen Objekten bleiben erhalten; unbekannte Projektfelder werden nicht entfernt.
 

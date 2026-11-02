@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Handball-Skizzeneditor</title>
+<link rel="stylesheet" href="./ai-chat.css">
 <style>
   :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
   * { box-sizing: border-box; }
@@ -992,7 +993,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v97</span>
+    <span>Einstellungen · v98</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1198,7 +1199,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v97</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v98</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1822,6 +1823,36 @@
 
 </div>
 
+<button id="aiChatToggle" class="ai-chat-toggle" type="button" aria-controls="aiChat" aria-expanded="false">KI-Chat</button>
+<section id="aiChat" class="ai-chat" aria-labelledby="aiChatTitle" hidden>
+  <div class="ai-chat-header">
+    <h2 id="aiChatTitle">Deine Skizze mit KI</h2>
+    <button id="aiChatClose" type="button" aria-label="KI-Chat schließen">×</button>
+  </div>
+  <div class="ai-chat-content">
+  <p class="ai-chat-intro">Beschreibe deine Übung oder eine Änderung. Beim Senden werden deine Nachricht, der Chatverlauf und das aktive Skizzenfeld an den KI-Dienst und OpenAI übertragen.</p>
+  <details id="aiChatSettings" class="ai-chat-settings">
+    <summary>KI-Verbindung einrichten</summary>
+    <label for="aiChatEndpoint">Adresse des KI-Dienstes</label>
+    <input id="aiChatEndpoint" type="url" placeholder="https://dein-ki-dienst.de/api/chat" autocomplete="off" spellcheck="false">
+    <label for="aiChatAccess">Zugangscode</label>
+    <input id="aiChatAccess" type="password" autocomplete="off">
+    <p>Den Zugangscode erhältst du vom Betreiber des Dienstes. Er wird nur für diese Sitzung verwendet. Hier keinen OpenAI-Schlüssel eintragen.</p>
+  </details>
+  <div id="aiChatLog" class="ai-chat-log" role="log" aria-label="Chatverlauf" aria-live="polite"></div>
+  </div>
+  <p id="aiChatStatus" class="ai-chat-status" role="status">Zum Beispiel: „Zwei nummerierte Angreifer auf neun Meter, mit einem Pass von 2 zu 1.“</p>
+  <form id="aiChatForm">
+    <label for="aiChatPrompt">Deine Anweisung</label>
+    <textarea id="aiChatPrompt" rows="2" maxlength="4000" placeholder="Beschreibe deine Übung …"></textarea>
+    <div class="ai-chat-actions">
+      <button id="aiChatSend" class="ai-chat-send" type="submit">Senden</button>
+      <button id="aiChatCancel" type="button" hidden>Abbrechen</button>
+      <button id="aiChatReset" type="button">Neuer Chat</button>
+    </div>
+  </form>
+</section>
+
 <script src="./js/project-io.js"></script>
 <script src="./js/local-draft.js"></script>
 <script src="./js/export.js"></script>
@@ -1829,6 +1860,8 @@
 <script src="./js/selection.js"></script>
 <script src="./js/geometry.js"></script>
 <script src="./js/object-model.js"></script>
+<script src="./js/ai-commands.js"></script>
+<script src="./js/ai-chat.js"></script>
 <script src="./js/interactions.js"></script>
 <script src="./js/mobile.js"></script>
 <script src="./js/tools.js"></script>
@@ -3910,7 +3943,7 @@
 
   function getProjectData() {
     return {
-      version: 97,
+      version: 98,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
@@ -4166,6 +4199,39 @@
     if (isSelected) drawSelection(o);
   }
 
+  const aiCommands = window.HandballAiCommands;
+  const aiSignature = () => JSON.stringify(getProjectData());
+  window.HandballAiChat.createChat({
+    onOpen: () => mobile.closePanels(),
+    isBusy: () => !!(editorState.drawing || editorState.dragging || editorState.draggingEndpoint ||
+      editorState.rotating || editorState.rotatingGroup || editorState.selectionRect ||
+      editorState.draggingLabelOffset || editorState.touchGestureSuppressEditor),
+    signature: aiSignature,
+    capture: () => {
+      const cell = storyboardCells()[editorState.layoutSettings.activeCell];
+      const settings = editorState.courtSettings;
+      const bounds = settings.mode === 'none' ? cell : cellCourtRect(settings.mode,settings.rotation,cell);
+      return {
+        ...aiCommands.describeScene(editorState.objects,cell,settings,bounds),
+        signature:aiSignature(),
+        defaults:{symbolSize:+symbolSize.value,strokeWidth:+strokeWidth.value,
+          strokeColor:strokeColor.value,markerColor:editorState.markerColor}
+      };
+    },
+    apply: (snapshot,reply) => {
+      const objects = aiCommands.planObjects(editorState.objects,snapshot,reply,{
+        model:objectModel,defaults:snapshot.defaults,initialPlayerRotation
+      });
+      setTool('select');
+      editorState.objects = objects;
+      commit();
+      updateProperties();
+      draw();
+      status.textContent = 'KI hat die Skizze aktualisiert – Rückgängig ist möglich';
+      mobile.closePanels();
+    }
+  });
+
   // Register touch capture handlers before normal pointer handlers.
   tools.install();
   mobile.install();
@@ -4216,7 +4282,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v97 =====
+  // ===== PWA / Service Worker v98 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4227,7 +4293,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v97-reload';
+      const reloadKey = 'handballtrainer-sw-v98-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4246,7 +4312,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v97 registration OK');
+        console.info('[Handballtrainer] Service Worker v98 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

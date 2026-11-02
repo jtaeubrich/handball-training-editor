@@ -633,7 +633,7 @@
       });
     }
 
-    return { install };
+    return { install, closePanels:closeMobilePanels };
   }
 
   global.HandballMobile = { createMobile };

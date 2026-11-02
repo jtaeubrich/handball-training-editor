@@ -186,7 +186,11 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v97)
+## Entwicklung und Regressionstests (v98)
+
+**KI-Chat:** Das aufklappbare Chatfenster kann das aktive Feld anhand einer Textbeschreibung bearbeiten: Spieler und Geräte platzieren, Nummern und freie Labels vergeben, Wege zeichnen sowie vorhandene Objekte verschieben oder gezielt entfernen. Alle Befehle einer Antwort werden gemeinsam geprüft und bilden einen Rückgängig-Schritt. Bei zwischenzeitlichen manuellen Änderungen werden die KI-Änderungen verworfen. Der Chat ist auch auf Smartphones bedienbar; Nachrichten werden erst beim Senden übertragen.
+
+Für echte KI-Antworten braucht der Editor einen separat eingerichteten OpenAI-Dienst. GitHub Pages stellt nur die Oberfläche bereit. Node-Dienst, Docker-Datei, Zugangsschutz und Einrichtung stehen unter [server/README.md](server/README.md). Ohne Dienstadresse und serverseitige Konfiguration ist noch kein echter KI-Chat möglich. OpenAI-Schlüssel gehören ausschließlich auf den Server. Server- und Browser-Tests verwenden kontrollierte Antworten und verursachen keine API-Kosten.
 
 Während ein Mehrpunktpfad gezeichnet wird, entfernt Rückgängig jeweils den letzten gesetzten Punkt mit seinem Segment. Der verbleibende Pfad bleibt sichtbar und kann weitergezeichnet werden. Wiederholen stellt entfernte Punkte wieder her; ein neuer Punkt verwirft den zurückgenommenen Zweig. Nach dem Abschließen gilt Rückgängig wieder für den gesamten Pfad als Objekt.
 

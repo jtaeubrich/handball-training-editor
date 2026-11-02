@@ -66,6 +66,19 @@ test('loaded project keeps its name and content after restarting',async({page})=
   expect(await page.evaluate(()=>window.__saved.objects)).toHaveLength(1);
 });
 
+test('a newly chosen project filename is immediately included in the local draft',async({page})=>{
+  await page.goto('/');await addPlayer(page);
+  await page.evaluate(()=>{
+    window.showSaveFilePicker=async()=>({name:'neue-uebung.json',createWritable:async()=>({write:async()=>{},close:async()=>{}})});
+  });
+  await page.locator('#jsonSaveBtn').click();
+  await expect(page.locator('#status')).toHaveText('Projekt gespeichert: neue-uebung.json');
+  expect((await stored(page)).fileName).toBe('neue-uebung.json');
+  await page.reload();
+  await expect(page.locator('#status')).toHaveText('Letzte Zeichnung lokal wiederhergestellt');
+  expect((await stored(page)).fileName).toBe('neue-uebung.json');
+});
+
 test('an interrupted freehand stroke is recovered as an editable object',async({page})=>{
   await page.goto('/');await choose(page,'freehand');
   const box=await page.locator('#c').boundingBox();

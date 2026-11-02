@@ -46,11 +46,13 @@
 
   const attackLabels = {
     '33': ['LA','RL','RM','KS','RR','RA'],
-    '24': ['RA','RR','KR','RL','KL','LA']
+    '24': ['RA','RR','KR','RL','KL','LA'],
+    numbers: Array.from({length:10}, (_, index) => String(index + 1))
   };
   const defenseLabels = {
     '321': ['AL','HL','VM','HM','HR','AR'],
-    '60': ['AL','HL','IL','IR','HR','AR']
+    '60': ['AL','HL','IL','IR','HR','AR'],
+    numbers: attackLabels.numbers
   };
 
   const typeNames = {
@@ -124,19 +126,30 @@
 
   // Preserve legacy project defaults in place, including unrecognized fields.
   function normalizeLoadedObject(o) {
-    if (o && o.kind === 'symbol' && o.type === 'attacker') {
+    if (o && o.kind === 'symbol' && (o.type === 'attacker' ||
+        (o.type === 'attackerBall' && ['numbers','custom'].includes(o.attackFormation)))) {
       if (typeof o.showLabel !== 'boolean') o.showLabel = false;
-      if (!['33','24'].includes(o.attackFormation)) o.attackFormation = '33';
-      const valid = attackLabels[o.attackFormation];
-      if (!valid.includes(o.label)) o.label = valid.includes('RM') ? 'RM' : valid[0];
+      if (!['33','24','numbers','custom'].includes(o.attackFormation)) o.attackFormation = '33';
+      if (o.attackFormation === 'custom') {
+        if (typeof o.label !== 'string') o.label = '';
+      } else {
+        const valid = attackLabels[o.attackFormation];
+        if (o.attackFormation === 'numbers' && typeof o.label === 'number') o.label = String(o.label);
+        if (!valid.includes(o.label)) o.label = valid.includes('RM') ? 'RM' : valid[0];
+      }
       ensureLabelOffset(o);
     }
 
     if (o && o.kind === 'symbol' && o.type === 'defender') {
       if (typeof o.showLabel !== 'boolean') o.showLabel = false;
-      if (!['321','60'].includes(o.defenseFormation)) o.defenseFormation = '321';
-      const valid = defenseLabels[o.defenseFormation];
-      if (!valid.includes(o.label)) o.label = valid.includes('HM') ? 'HM' : valid[0];
+      if (!['321','60','numbers','custom'].includes(o.defenseFormation)) o.defenseFormation = '321';
+      if (o.defenseFormation === 'custom') {
+        if (typeof o.label !== 'string') o.label = '';
+      } else {
+        const valid = defenseLabels[o.defenseFormation];
+        if (o.defenseFormation === 'numbers' && typeof o.label === 'number') o.label = String(o.label);
+        if (!valid.includes(o.label)) o.label = valid.includes('HM') ? 'HM' : valid[0];
+      }
       ensureLabelOffset(o);
     }
 

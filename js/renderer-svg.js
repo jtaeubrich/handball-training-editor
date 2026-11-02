@@ -533,7 +533,7 @@
         const cx = r.x + r.w / 2;
         const goalY = r.y;
         const scale = r.w / 20;
-        const goalW = 2 * scale;
+        const goalW = r.w * 0.10; // 10% of the goal-line width, centered on that line
         const six = 6 * scale;
         const nine = 9 * scale;
         const segHalf = 1.5 * scale;
@@ -623,7 +623,7 @@
       const right = r.x + r.w;
       const cy = r.y + r.h / 2;
       const centerX = r.x + r.w / 2;
-      const goalW = 2 * scale;
+      const goalW = r.h * 0.10; // 10% of the goal-line width, centered on that line
       const six = 6 * scale;
       const nine = 9 * scale;
       const segHalf = 1.5 * scale;

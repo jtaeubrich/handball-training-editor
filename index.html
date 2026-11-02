@@ -992,7 +992,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v95</span>
+    <span>Einstellungen · v96</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1198,7 +1198,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v95</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v96</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1740,29 +1740,41 @@
 
       <div id="attackLabelOptions">
         <div class="prop-row">
-          <label>Angriff</label>
+          <label>Label-Set</label>
           <select id="propAttackFormation">
             <option value="33">3:3</option>
             <option value="24">2:4</option>
+            <option value="numbers">Zahlen 1–10</option>
+            <option value="custom">Freie Eingabe</option>
           </select>
         </div>
         <div class="prop-row">
           <label>Position</label>
           <select id="propAttackLabel"></select>
         </div>
+        <div id="attackCustomLabelRow" class="prop-row" hidden>
+          <label for="propAttackCustomLabel">Freies Label</label>
+          <input id="propAttackCustomLabel" type="text" maxlength="24" placeholder="Name oder eigenes Label">
+        </div>
       </div>
 
       <div id="defenseLabelOptions">
         <div class="prop-row">
-          <label>Abwehr</label>
+          <label>Label-Set</label>
           <select id="propDefenseFormation">
             <option value="321">3:2:1</option>
             <option value="60">6:0</option>
+            <option value="numbers">Zahlen 1–10</option>
+            <option value="custom">Freie Eingabe</option>
           </select>
         </div>
         <div class="prop-row">
           <label>Position</label>
           <select id="propDefenseLabel"></select>
+        </div>
+        <div id="defenseCustomLabelRow" class="prop-row" hidden>
+          <label for="propDefenseCustomLabel">Freies Label</label>
+          <input id="propDefenseCustomLabel" type="text" maxlength="24" placeholder="Name oder eigenes Label">
         </div>
       </div>
 
@@ -1877,6 +1889,7 @@
   const STORYBOARD_GAP = 24;
 
   editorState.canvasZoom = 1;
+  editorState.fitToWidth = true;
 
   function applyCanvasZoom() {
     const percent = Math.round(editorState.canvasZoom * 100);
@@ -1887,6 +1900,7 @@
   }
 
   function setCanvasZoom(percent) {
+    editorState.fitToWidth = false;
     const clamped = Math.max(25, Math.min(200, +percent || 100));
     editorState.canvasZoom = clamped / 100;
     applyCanvasZoom();
@@ -2036,6 +2050,27 @@
       canvas.height = target.height;
     }
     applyCanvasZoom();
+    fitMobileCanvas();
+  }
+
+  function fitMobileCanvas() {
+    if (!editorState.fitToWidth) return;
+    if (!window.matchMedia('(max-width: 700px)').matches) return;
+    const scroller = canvas.closest('main');
+    const cells = storyboardCells();
+    let visibleWidth = canvas.width;
+    let centerX = canvas.width / 2;
+    if (cells.length === 1 && editorState.courtSettings.mode !== 'none') {
+      const r = cellCourtRect(editorState.courtSettings.mode, editorState.courtSettings.rotation, cells[0]);
+      const angle = (editorState.courtSettings.rotation || 0) * Math.PI / 180;
+      visibleWidth = Math.abs(Math.cos(angle)) * r.w + Math.abs(Math.sin(angle)) * r.h;
+      centerX = r.x + r.w / 2;
+    }
+    editorState.canvasZoom = Math.max(0.25, Math.min(1, (scroller.clientWidth - 30) / visibleWidth));
+    applyCanvasZoom();
+    const rect = canvas.getBoundingClientRect();
+    const viewport = scroller.getBoundingClientRect();
+    scroller.scrollLeft += rect.left + centerX * rect.width / canvas.width - (viewport.left + viewport.width / 2);
   }
 
   function cellIndexAtPoint(x, y) {
@@ -2189,6 +2224,8 @@
   const propAttackLabel = document.getElementById('propAttackLabel');
   const propDefenseFormation = document.getElementById('propDefenseFormation');
   const propDefenseLabel = document.getElementById('propDefenseLabel');
+  const propAttackCustomLabel = document.getElementById('propAttackCustomLabel');
+  const propDefenseCustomLabel = document.getElementById('propDefenseCustomLabel');
   const propPathLabel = document.getElementById('propPathLabel');
   const pathCustomLabelRow = document.getElementById('pathCustomLabelRow');
   const propPathCustomLabel = document.getElementById('propPathCustomLabel');
@@ -2702,6 +2739,7 @@
 
     rotateActiveCellObjects(oldRotation, newRotation);
     editorState.courtSettings.rotation = newRotation;
+    fitMobileCanvas();
 
     commit();
     updateProperties();
@@ -3170,6 +3208,10 @@
 
   function updateAttackLabelOptions(selectedValue=null) {
     const formation = propAttackFormation.value || '33';
+    const custom = formation === 'custom';
+    document.getElementById('attackCustomLabelRow').hidden = !custom;
+    propAttackLabel.parentElement.hidden = custom;
+    if (custom) { propAttackCustomLabel.value = selectedValue ?? ''; return; }
     const labels = attackLabels[formation] || attackLabels['33'];
 
     propAttackLabel.innerHTML = labels
@@ -3185,6 +3227,10 @@
 
   function updateDefenseLabelOptions(selectedValue=null) {
     const formation = propDefenseFormation.value || '321';
+    const custom = formation === 'custom';
+    document.getElementById('defenseCustomLabelRow').hidden = !custom;
+    propDefenseLabel.parentElement.hidden = custom;
+    if (custom) { propDefenseCustomLabel.value = selectedValue ?? ''; return; }
     const labels = defenseLabels[formation] || defenseLabels['321'];
 
     propDefenseLabel.innerHTML = labels
@@ -3692,13 +3738,13 @@
   propAttackFormation.addEventListener('change', () => {
     if (editorState.selected < 0) return;
     const o = editorState.objects[editorState.selected];
-    if (o.type !== 'attacker') return;
+    if (!['attacker','attackerBall'].includes(o.type)) return;
 
     o.attackFormation = propAttackFormation.value;
-    updateAttackLabelOptions();
-    o.label = propAttackLabel.value;
-    o.showLabel = true;
-    propShowLabel.checked = true;
+    updateAttackLabelOptions(o.attackFormation === 'custom' ? o.label : null);
+    o.label = o.attackFormation === 'custom' ? propAttackCustomLabel.value : propAttackLabel.value;
+    o.showLabel = !!o.label.trim();
+    propShowLabel.checked = o.showLabel;
 
     commit();
     draw();
@@ -3707,7 +3753,7 @@
   propAttackLabel.addEventListener('change', () => {
     if (editorState.selected < 0) return;
     const o = editorState.objects[editorState.selected];
-    if (o.type !== 'attacker') return;
+    if (!['attacker','attackerBall'].includes(o.type)) return;
     o.label = propAttackLabel.value;
     o.showLabel = true;
     propShowLabel.checked = true;
@@ -3721,10 +3767,10 @@
     if (o.type !== 'defender') return;
 
     o.defenseFormation = propDefenseFormation.value;
-    updateDefenseLabelOptions();
-    o.label = propDefenseLabel.value;
-    o.showLabel = true;
-    propShowLabel.checked = true;
+    updateDefenseLabelOptions(o.defenseFormation === 'custom' ? o.label : null);
+    o.label = o.defenseFormation === 'custom' ? propDefenseCustomLabel.value : propDefenseLabel.value;
+    o.showLabel = !!o.label.trim();
+    propShowLabel.checked = o.showLabel;
 
     commit();
     draw();
@@ -3740,6 +3786,22 @@
     commit();
     draw();
   });
+
+  function bindPlayerCustomLabel(input, types, formationKey) {
+    const update = commitNow => {
+      const o = editorState.objects[editorState.selected];
+      if (!o || !types.includes(o.type) || o[formationKey] !== 'custom') return;
+      o.label = input.value;
+      o.showLabel = !!o.label.trim();
+      propShowLabel.checked = o.showLabel;
+      if (commitNow) commit();
+      draw();
+    };
+    input.addEventListener('input', () => update(false));
+    input.addEventListener('change', () => update(true));
+  }
+  bindPlayerCustomLabel(propAttackCustomLabel, ['attacker','attackerBall'], 'attackFormation');
+  bindPlayerCustomLabel(propDefenseCustomLabel, ['defender'], 'defenseFormation');
 
   propPathLabel.addEventListener('change', () => {
     if (editorState.selected < 0) return;
@@ -3836,13 +3898,14 @@
 
   function getProjectData() {
     return {
-      version: 95,
+      version: 96,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
         cols:editorState.layoutSettings.cols,
         rows:editorState.layoutSettings.rows,
         activeCell:editorState.layoutSettings.activeCell,
+        fitToWidth:editorState.fitToWidth,
         zoomPercent:Math.round(editorState.canvasZoom * 100)
       },
       cellCourts: editorState.cellCourts.map(cloneCourtSettings),
@@ -3880,9 +3943,12 @@
         activeCell: Math.max(0, +data.layout.activeCell || 0)
       };
       editorState.canvasZoom = Math.max(0.25, Math.min(2, (+data.layout.zoomPercent || 100) / 100));
+      editorState.fitToWidth = typeof data.layout.fitToWidth === 'boolean'
+        ? data.layout.fitToWidth : (+data.layout.zoomPercent || 100) === 100;
     } else {
       editorState.layoutSettings = { cols:1, rows:1, activeCell:0 };
       editorState.canvasZoom = 1;
+      editorState.fitToWidth = true;
     }
 
     if (Array.isArray(data.cellCourts) && data.cellCourts.length) {
@@ -4119,6 +4185,10 @@
     if (document.hidden) localDraft.flush();
   }, {capture:true});
   window.addEventListener('pagehide', () => localDraft.flush());
+  window.addEventListener('resize', () => {
+    fitMobileCanvas();
+    localDraft.schedule();
+  });
 
   layoutGrid.value = `${editorState.layoutSettings.cols}x${editorState.layoutSettings.rows}`;
   syncActiveCellSelect();
@@ -4131,7 +4201,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v95 =====
+  // ===== PWA / Service Worker v96 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4142,7 +4212,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v95-reload';
+      const reloadKey = 'handballtrainer-sw-v96-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4161,7 +4231,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v95 registration OK');
+        console.info('[Handballtrainer] Service Worker v96 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

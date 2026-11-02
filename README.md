@@ -186,7 +186,11 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v95)
+## Entwicklung und Regressionstests (v96)
+
+Angreifer mit und ohne Ball sowie Abwehrspieler bieten zusätzlich das Label-Set **Zahlen 1–10** und **Freie Eingabe** (bis zu 24 Zeichen). Die bisherigen Positionssets bleiben erhalten. Die gewählten Sets und Texte werden in Projektdateien und der lokalen Sicherung gespeichert; im SVG werden freie Texte korrekt maskiert.
+
+Auf Smartphones passt die automatische Ansicht ein einzelnes Spielfeld in die verfügbare Breite ein und zentriert es. Die Toröffnung bleibt 10 % der zugehörigen Torlinienbreite und liegt in deren Mitte, auch bei gedrehten Feldern. Bei mehreren Storyboard-Zellen wird das gesamte Raster eingepasst. Manuell eingestellter Zoom hat Vorrang und wird beim Wiederöffnen beibehalten. Der Ansichtsmodus wird im Projekt als `layout.fitToWidth` gespeichert; ältere Projekte mit dem Standardzoom werden automatisch eingepasst.
 
 Das objektbezogene Canvas-Rendering liegt in `js/renderer-canvas.js`, das SVG-Rendering einschließlich Spielfeld in `js/renderer-svg.js`. `js/renderer-court.js` zeichnet die Canvas-Spielfelder, Raster und Storyboards. Die Renderer erhalten ihre benötigten Geometrie- und Beschriftungsfunktionen ausdrücklich vom Editor. Auswahlrahmen und die Verbindung der Module bleiben in `index.html`.
 

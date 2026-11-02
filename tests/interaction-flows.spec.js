@@ -153,8 +153,9 @@ test('two-finger zoom rolls back first-finger edits and recovers after cancellat
   await page.setViewportSize({width:390,height:844});
   await choose(page,'feeder');
   const cdp=await page.context().newCDPSession(page);
+  const initialZoom=(await project(page)).layout.zoomPercent;
   await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true});
-  const origin=await at(page,100,180);
+  const origin=await at(page,250,260);
   const touch=async(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points.map(({x,y,id})=>({x,y,id,radiusX:2,radiusY:2}))});
   await touch('touchStart',[{...origin,id:1}]);
   await touch('touchStart',[{...origin,id:1},{x:origin.x+80,y:origin.y,id:2}]);
@@ -162,8 +163,8 @@ test('two-finger zoom rolls back first-finger edits and recovers after cancellat
   await touch('touchCancel',[]);
   const result=await project(page);
   expect(result.objects).toHaveLength(0);
-  expect(result.layout.zoomPercent).toBeGreaterThan(100);
-  const after=await at(page,120,140);
+  expect(result.layout.zoomPercent).toBeGreaterThan(initialZoom);
+  const after=await at(page,270,240);
   await touch('touchStart',[{...after,id:3}]);await touch('touchEnd',[]);
   expect((await project(page)).objects).toHaveLength(1);
 });

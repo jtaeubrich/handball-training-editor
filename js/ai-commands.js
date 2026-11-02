@@ -11,6 +11,7 @@
   const pointSchema = {type:'object',properties:{x:{type:'number'},y:{type:'number'}},required:['x','y'],additionalProperties:false};
   const identifier = {type:'string',pattern:'^[a-zA-Z0-9_-]{1,40}$'};
   const labelSchema = {type:'string',maxLength:24};
+  const labelOffsetSchema = {type:'integer',minimum:-50,maximum:50};
   function operation(op, properties) {
     const fields = {op:{type:'string',enum:[op]},...properties};
     return {type:'object',properties:fields,required:Object.keys(fields),additionalProperties:false};
@@ -24,6 +25,7 @@
         operation('add_path',{id:identifier,type:{type:'string',enum:pathTypes},points:{type:'array',minItems:2,maxItems:50,items:pointSchema}}),
         operation('move',{target:identifier,x:{type:'number'},y:{type:'number'}}),
         operation('label',{target:identifier,label:labelSchema}),
+        operation('label_offset',{target:identifier,x:labelOffsetSchema,y:labelOffsetSchema}),
         operation('remove',{target:identifier})
       ]}}
     }
@@ -36,6 +38,13 @@
   }
   function id(value) { if (typeof value !== 'string' || !/^[a-zA-Z0-9_-]{1,40}$/.test(value)) fail('Ungültige Objektreferenz.'); }
   function label(value) { if (typeof value !== 'string' || value.length > 24) fail('Beschriftungen dürfen höchstens 24 Zeichen enthalten.'); }
+  function labelOffset(value) {
+    if (!Number.isInteger(value) || value < -50 || value > 50) fail('Der Beschriftungsversatz muss eine ganze Zahl zwischen -50 und +50 Pixeln sein.');
+  }
+  function supportsLabel(object) {
+    return object.kind === 'symbol' && ['attacker','attackerBall','defender'].includes(object.type) ||
+      object.kind === 'path' && pathTypes.includes(object.type);
+  }
   function point(p, scene) {
     exact(p,['x','y']);
     if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.y < 0 || p.x > scene.width || p.y > scene.height) fail('Ein Punkt liegt außerhalb des aktiven Spielfelds.');
@@ -46,8 +55,11 @@
     if (!Number.isInteger(scene.cell) || scene.cell < 1 || scene.cell > 8 || !['half','full','none'].includes(scene.mode) || ![0,90,180,270].includes(scene.rotation) || scene.width !== (scene.mode === 'full' ? 40 : 20) || scene.height !== 20 || !Array.isArray(scene.objects) || scene.objects.length > 1200) fail('Ungültiger Skizzenkontext.');
     const ids = new Set();
     for (const object of scene.objects) {
-      exact(object,['id','kind','type','label','x','y','points']);
+      // v99 clients omit offsets. Accept those contexts during the server rollout.
+      const hasOffsets = Object.hasOwn(object,'labelOffsetX') || Object.hasOwn(object,'labelOffsetY');
+      exact(object,['id','kind','type','label','x','y','points',...(hasOffsets ? ['labelOffsetX','labelOffsetY'] : [])]);
       id(object.id); label(object.label);
+      if (hasOffsets) { labelOffset(object.labelOffsetX); labelOffset(object.labelOffsetY); }
       if (ids.has(object.id) || !['symbol','path','freehand'].includes(object.kind) || !(symbolTypes.includes(object.type) || pathTypes.includes(object.type) || object.type === 'freehand') || !Number.isFinite(object.x) || !Number.isFinite(object.y) || Math.abs(object.x) > 1000 || Math.abs(object.y) > 1000 || !Array.isArray(object.points) || object.points.length > 200) fail('Ungültiges Objekt im Skizzenkontext.');
       ids.add(object.id);
       for (const p of object.points) {
@@ -61,7 +73,7 @@
   function validateReply(reply, scene) {
     exact(reply,['message','commands']);
     if (typeof reply.message !== 'string' || !reply.message.trim() || reply.message.length > 6000 || !Array.isArray(reply.commands) || reply.commands.length > 80) fail('Die KI-Antwort enthält keine gültigen Zeichenbefehle.');
-    const ids = new Map(scene.objects.map(o => [o.id,o.kind]));
+    const ids = new Map(scene.objects.map(o => [o.id,o]));
     const used = new Set(ids.keys());
     for (const c of reply.commands) {
       if (!plain(c)) fail('Ungültiger Zeichenbefehl.');
@@ -70,7 +82,7 @@
         if (!symbolTypes.includes(c.type)) fail('Unbekanntes Spielersymbol.');
         if (c.label && !['attacker','attackerBall','defender'].includes(c.type)) fail('Dieses Symbol unterstützt keine Beschriftung.');
         if (used.has(c.id)) fail('Eine Objektreferenz ist doppelt vergeben.');
-        used.add(c.id); ids.set(c.id,'symbol');
+        used.add(c.id); ids.set(c.id,{kind:'symbol',type:c.type});
       } else if (c.op === 'add_path') {
         exact(c,['op','id','type','points']); id(c.id);
         if (!pathTypes.includes(c.type) || !Array.isArray(c.points) || c.points.length < 2 || c.points.length > 50) fail('Ungültiger Pfad.');
@@ -79,13 +91,17 @@
         if ((!multi && !curve && c.points.length !== 2) || (curve && c.points.length !== 4)) fail('Gerade Wege benötigen 2 Punkte, Kurven 4 Punkte.');
         c.points.forEach(p => point(p,scene));
         if (used.has(c.id)) fail('Eine Objektreferenz ist doppelt vergeben.');
-        used.add(c.id); ids.set(c.id,'path');
-      } else if (['move','label','remove'].includes(c.op)) {
-        exact(c,c.op === 'move' ? ['op','target','x','y'] : c.op === 'label' ? ['op','target','label'] : ['op','target']);
+        used.add(c.id); ids.set(c.id,{kind:'path',type:c.type});
+      } else if (['move','label','label_offset','remove'].includes(c.op)) {
+        exact(c,c.op === 'move' || c.op === 'label_offset' ? ['op','target','x','y'] : c.op === 'label' ? ['op','target','label'] : ['op','target']);
         id(c.target);
         if (!ids.has(c.target)) fail('Die KI verweist auf ein nicht vorhandenes Objekt.');
         if (c.op === 'move') point({x:c.x,y:c.y},scene);
         if (c.op === 'label') label(c.label);
+        if (c.op === 'label_offset') {
+          labelOffset(c.x); labelOffset(c.y);
+          if (!supportsLabel(ids.get(c.target))) fail('Dieses Objekt unterstützt keinen Beschriftungsversatz.');
+        }
         if (c.op === 'remove') ids.delete(c.target);
       } else fail('Unbekannter Zeichenbefehl.');
     }
@@ -125,7 +141,9 @@
       } else if (o.kind === 'path') {
         points = [{x:o.x1,y:o.y1},...(Number.isFinite(o.cx1) ? [{x:o.cx1,y:o.cy1},{x:o.cx2,y:o.cy2}] : []),{x:o.x2,y:o.y2}];
       }
-      descriptions.push({id:objectId,kind:o.kind,type:o.type,label:o.showLabel && typeof o.label === 'string' ? o.label.slice(0,24) : '',...rounded(start),points:points.map(rounded)});
+      const offset = value => Number.isFinite(value) ? Math.max(-50,Math.min(50,Math.round(value))) : 0;
+      descriptions.push({id:objectId,kind:o.kind,type:o.type,label:o.showLabel && typeof o.label === 'string' ? o.label.slice(0,24) : '',...rounded(start),points:points.map(rounded),
+        labelOffsetX:offset(o.labelOffsetX),labelOffsetY:offset(o.labelOffsetY)});
     });
     const scene = {cell:cell.index+1,mode:settings.mode,rotation:settings.rotation,width:settings.mode === 'full' ? 40 : 20,height:20,objects:descriptions};
     validateContext(scene);
@@ -162,6 +180,10 @@
         const o = refs.get(c.target);
         if (c.op === 'remove') { result.splice(result.indexOf(o),1); refs.delete(c.target); }
         else if (c.op === 'label') setLabel(o,c.label);
+        else if (c.op === 'label_offset') {
+          o.labelOffsetX = c.x; o.labelOffsetY = c.y;
+          model.ensureLabelOffset(o);
+        }
         else {
           const p = context.frame.toWorld(c);
           const dx = p.x-(o.kind === 'symbol' ? o.x : o.x1), dy = p.y-(o.kind === 'symbol' ? o.y : o.y1);

@@ -186,7 +186,9 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v99)
+## Entwicklung und Regressionstests (v100)
+
+Die KI kann mit `label_offset` den Beschriftungsversatz von Angreifern, Abwehrspielern und Wegen setzen, z. B. „Beschriftung von Spieler 2 um 30 Pixel nach oben“. Der aktuelle Versatz wird mit dem Skizzenzustand übertragen. Der Befehl setzt absolute ganzzahlige X-/Y-Werte von −50 bis +50 Canvas-Pixeln, wie die manuelle Oberfläche. Rückgängig, lokale Sicherung und Export bleiben erhalten.
 
 **KI-Chat:** Das aufklappbare Chatfenster kann das aktive Feld anhand einer Textbeschreibung bearbeiten: Spieler und Geräte platzieren, Nummern und freie Labels vergeben, Wege zeichnen sowie vorhandene Objekte verschieben oder gezielt entfernen. Alle Befehle einer Antwort werden gemeinsam geprüft und bilden einen Rückgängig-Schritt. Bei zwischenzeitlichen manuellen Änderungen werden die KI-Änderungen verworfen. Der Chat ist auch auf Smartphones bedienbar; Nachrichten werden erst beim Senden übertragen.
 

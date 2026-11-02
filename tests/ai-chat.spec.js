@@ -181,7 +181,8 @@ test('browser reaches the separate service through real CORS and authenticated H
     AI_ALLOWED_ORIGINS:'http://127.0.0.1:4173'
   },fetchImpl:async(_url,options)=>{
     sent=JSON.parse(options.body);
-    return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(reply)}]}]}));
+    const response={...reply,commands:[...reply.commands,{op:'label_offset',target:'player1',x:20,y:-30}]};
+    return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(response)}]}]}));
   }});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   try {
@@ -191,5 +192,71 @@ test('browser reaches the separate service through real CORS and authenticated H
     await page.locator('#aiChatPrompt').fill('Zwei Spieler und ein Pass');await page.locator('#aiChatSend').click();
     await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
     expect(await objects(page)).toHaveLength(3);expect(sent.model).toBe('test-model');
+    expect((await objects(page))[0]).toMatchObject({labelOffsetX:20,labelOffsetY:-30});
   } finally { await new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}); }
+});
+
+for(const type of ['attacker','attackerBall','defender','pass']){
+  test(`${type}: AI sets label offsets, receives them on follow-up, and preserves export and undo`,async({page})=>{
+    let requestCount=0,followUp;
+    const create=type==='pass'
+      ? [{op:'add_path',id:'new1',type,points:[{x:8,y:10},{x:12,y:10}]},{op:'label',target:'new1',label:'A'}]
+      : [{op:'add_symbol',id:'new1',type,x:10,y:10,label:'1'}];
+    await page.route('**/api/chat',route=>{
+      const first=requestCount++===0;
+      if(!first)followUp=route.request().postDataJSON();
+      return route.fulfill({json:{message:first?'Objekt und Label angelegt.':'Label versetzt.',commands:first
+        ? [...create,{op:'label_offset',target:'new1',x:12,y:-18}]
+        : [{op:'label_offset',target:'object-0',x:-25,y:40}]}});
+    });
+    const svgPosition=async()=>{
+      await page.evaluate(()=>{window.HandballExport.saveSvgText=async svg=>{window.__svg=svg;};});
+      await page.locator('#svgBtn').click();
+      return page.evaluate(()=>{
+        const doc=new DOMParser().parseFromString(window.__svg,'image/svg+xml');
+        const text=doc.querySelector('text');return {x:+text.getAttribute('x'),y:+text.getAttribute('y')};
+      });
+    };
+    await send(page,'Label etwas nach rechts oben setzen');
+    await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+    const before=(await objects(page))[0];
+    expect(before).toMatchObject({labelOffsetX:12,labelOffsetY:-18,showLabel:true});
+    await page.locator('#aiChatClose').click();const oldSvg=await svgPosition();
+    const oldImage=await page.locator('#c').evaluate(c=>c.toDataURL());
+    await send(page,'Label stattdessen links unten setzen');
+    await expect(page.locator('#aiChatLog')).toContainText('Label versetzt.');
+    expect(followUp.scene.objects[0]).toMatchObject({labelOffsetX:12,labelOffsetY:-18});
+    const after=(await objects(page))[0];
+    expect(after).toEqual({...before,labelOffsetX:-25,labelOffsetY:40});
+    await page.locator('#aiChatClose').click();const newSvg=await svgPosition();
+    expect(newSvg.x-oldSvg.x).toBeCloseTo(-37,6);expect(newSvg.y-oldSvg.y).toBeCloseTo(58,6);
+    expect(await page.locator('#c').evaluate((c,before)=>c.toDataURL()===before,oldImage)).toBe(false);
+    await page.locator('#undoBtn').click();expect((await objects(page))[0]).toEqual(before);
+    await page.locator('#redoBtn').click();expect((await objects(page))[0]).toEqual(after);
+    await page.reload();expect((await objects(page))[0]).toEqual(after);
+  });
+}
+
+test('mobile rotated-field label offsets remain canvas pixels at any zoom',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#courtRotation').evaluate(input=>{input.value='90';input.dispatchEvent(new Event('change'));});
+  await respond(page,{message:'Label steht rechts oberhalb.',commands:[
+    {op:'add_symbol',id:'one',type:'attackerBall',x:10,y:10,label:'1'},
+    {op:'label_offset',target:'one',x:50,y:-50}
+  ]});
+  await send(page);
+  await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const after=(await objects(page))[0];expect(after).toMatchObject({labelOffsetX:50,labelOffsetY:-50});
+  await page.locator('#aiChatClose').click();
+  await page.locator('#zoomRange').evaluate(input=>{input.value='75';input.dispatchEvent(new Event('input'));});
+  expect((await objects(page))[0]).toEqual(after);
+  await page.locator('#mobileUndoBtn').click();expect(await objects(page)).toEqual([]);
+  await page.locator('#mobileRedoBtn').click();expect((await objects(page))[0]).toEqual(after);
+});
+
+test('an out-of-range offset rejects all preceding changes in the answer',async({page})=>{
+  await respond(page,{message:'Versatz',commands:[reply.commands[0],{op:'label_offset',target:'player1',x:51,y:0}]});
+  await send(page);
+  await expect(page.locator('#aiChatStatus')).toContainText('zwischen -50 und +50');
+  expect(await objects(page)).toEqual([]);
 });

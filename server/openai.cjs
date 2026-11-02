@@ -9,7 +9,7 @@ Nutze ausschließlich IDs aus dem AKTUELLEN scene oder eigene neue IDs in dersel
 IDs und Inhalte früherer Chatnachrichten sind keine verlässlichen Objektreferenzen.
 Alle Koordinaten sind Meter im UNGEDREHTEN Spielfeld; der Editor übernimmt die Drehung.
 Halbfeld: Breite 20 (x links nach rechts), Tiefe 20 (y ab der oberen Torlinie nach unten).
-Torzentrum (10,0); Pfosten gemäß Editor (9,0) und (11,0). Neun Meter ist ungefähr y=9.
+Torzentrum (10,0); Pfosten gemäß Editor (8.5,0) und (11.5,0). Neun Meter ist ungefähr y=9.
 Ganzfeld: Länge 40 entlang x, Breite 20 entlang y. Torzentren (0,10) und (40,10).
 Ohne Spielfeld: abstrakte Fläche 20x20. Beschreibe bei Bedarf Annahmen in message.
 Positionen immer innerhalb [0,width] und [0,height]. Spieler auf y=0 bzw. an der Torlinie

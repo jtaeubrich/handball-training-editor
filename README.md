@@ -186,7 +186,7 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v98)
+## Entwicklung und Regressionstests (v99)
 
 **KI-Chat:** Das aufklappbare Chatfenster kann das aktive Feld anhand einer Textbeschreibung bearbeiten: Spieler und Geräte platzieren, Nummern und freie Labels vergeben, Wege zeichnen sowie vorhandene Objekte verschieben oder gezielt entfernen. Alle Befehle einer Antwort werden gemeinsam geprüft und bilden einen Rückgängig-Schritt. Bei zwischenzeitlichen manuellen Änderungen werden die KI-Änderungen verworfen. Der Chat ist auch auf Smartphones bedienbar; Nachrichten werden erst beim Senden übertragen.
 

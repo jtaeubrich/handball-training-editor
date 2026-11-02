@@ -992,7 +992,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v96</span>
+    <span>Einstellungen · v97</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1198,7 +1198,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v96</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v97</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -2564,6 +2564,11 @@
   }
 
   function undo() {
+    if (interactions.undoMultiPath()) {
+      localDraft?.flush();
+      return;
+    }
+    interactions.resetMultiPathHistory();
     const state = historyManager.undo();
     if (!state) return;
     editorState.objects = state;
@@ -2574,6 +2579,12 @@
   }
 
   function redo() {
+    if (interactions.redoMultiPath()) {
+      localDraft?.flush();
+      return;
+    }
+    // Object history must not replace objects beneath an unfinished path.
+    if (editorState.drawing && isMultiPointPath(editorState.drawing)) return;
     const state = historyManager.redo();
     if (!state) return;
     editorState.objects = state;
@@ -2859,6 +2870,7 @@
   document.getElementById('clearBtn').addEventListener('click', e => {
     e.preventDefault();
     e.stopPropagation();
+    interactions.resetMultiPathHistory();
 
     const hasAnything = editorState.objects.length > 0 || editorState.drawing;
     if (!hasAnything) return;
@@ -3898,7 +3910,7 @@
 
   function getProjectData() {
     return {
-      version: 96,
+      version: 97,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
@@ -3927,6 +3939,8 @@
 
   function applyProjectData(data) {
     if (!data || !Array.isArray(data.objects)) throw new Error('Ungültiges Projektformat.');
+    interactions.resetMultiPathHistory();
+    editorState.drawing = null;
 
     const savedCanvasWidth = data.canvas && Number.isFinite(+data.canvas.width) ? +data.canvas.width : 1100;
     const savedCanvasHeight = data.canvas && Number.isFinite(+data.canvas.height) ? +data.canvas.height : 720;
@@ -4042,6 +4056,7 @@
   const { courtThemes } = courtRenderer;
 
   const tools = window.HandballTools.createTools(editorState, {
+    resetMultiPathHistory: () => interactions.resetMultiPathHistory(),
     canvas,
     clearSelection,
     draw,
@@ -4201,7 +4216,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v96 =====
+  // ===== PWA / Service Worker v97 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4212,7 +4227,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v96-reload';
+      const reloadKey = 'handballtrainer-sw-v97-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4231,7 +4246,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v96 registration OK');
+        console.info('[Handballtrainer] Service Worker v97 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

@@ -12,7 +12,7 @@ test.beforeEach(async({page})=>{
     for(const [name,factory]of [['HandballTools','createTools'],['HandballMobile','createMobile'],['HandballInteractions','createInteractions']]){
       Object.defineProperty(window,name,{configurable:true,set(module){
         const create=module[factory];
-        module[factory]=(...args)=>{const controller=create(...args);window.__controllers.push(controller);return controller;};
+        module[factory]=(...args)=>{window.__editorState=args[0];const controller=create(...args);window.__controllers.push(controller);return controller;};
         Object.defineProperty(window,name,{value:module,configurable:true});
       }});
     }
@@ -110,6 +110,61 @@ test('Escape cancels a multi-point preview and double click finishes once',async
   await click(page,200,200);const end=await at(page,340,260);await page.mouse.dblclick(end.x,end.y);
   const objects=(await project(page)).objects;
   expect(objects).toHaveLength(1);expect(objects[0].points).toHaveLength(2);
+});
+
+for (const type of ['runMulti','runBallMulti','screenMulti']) {
+  test(`${type}: undo removes one segment, redraws it and continues from the remaining endpoint`,async({page})=>{
+    await choose(page,'feeder');await click(page,450,400);
+    const original=(await project(page)).objects;
+    await choose(page,type);
+    await click(page,200,200);await click(page,300,250);
+    const remaining=await page.locator('#c').evaluate(canvas=>canvas.toDataURL());
+    await click(page,380,300);
+    await page.locator('#undoBtn').click();
+    expect(await page.evaluate(()=>window.__editorState.drawing.points)).toHaveLength(3);
+    expect(await page.locator('#c').evaluate((canvas,before)=>canvas.toDataURL()===before,remaining)).toBe(true);
+    expect((await project(page)).objects).toEqual(original);
+    await page.keyboard.press('Control+y');
+    expect(await page.evaluate(()=>window.__editorState.drawing.points)).toHaveLength(4);
+    await page.keyboard.press('Control+z');
+    await click(page,320,350);
+    await page.keyboard.press('Control+y'); // Continuing discards the removed branch.
+    await page.keyboard.press('Enter');
+    const path=(await project(page)).objects[1];
+    expect(path.points).toHaveLength(3);
+    expectPoint(path.points[1],300,250);expectPoint(path.points[2],320,350);
+    await page.locator('#undoBtn').click();
+    expect((await project(page)).objects).toEqual(original);
+    await page.locator('#redoBtn').click();
+    expect((await project(page)).objects[1]).toEqual(path);
+  });
+}
+
+test('undoing every pending point permits a fresh path and does not resurrect cancelled points',async({page})=>{
+  await choose(page,'runMulti');await click(page,200,200);await click(page,300,250);
+  await page.keyboard.press('Control+z');await page.keyboard.press('Control+z');
+  expect(await page.evaluate(()=>window.__editorState.drawing)).toBeNull();
+  await page.keyboard.press('Control+y');await page.keyboard.press('Control+y');
+  expect(await page.evaluate(()=>window.__editorState.drawing.points)).toHaveLength(3);
+  await page.keyboard.press('Escape');await page.keyboard.press('Control+y');
+  expect(await page.evaluate(()=>window.__editorState.drawing)).toBeNull();
+  await click(page,400,300);await click(page,480,350);await page.keyboard.press('Enter');
+  const path=(await project(page)).objects[0];expect(path.points).toHaveLength(2);
+  expectPoint(path.points[0],400,300);expectPoint(path.points[1],480,350);
+});
+
+test('mobile undo preserves remaining segments in the local draft',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await choose(page,'runMulti');
+  await click(page,350,200);await click(page,450,250);await click(page,550,300);
+  await page.locator('#mobileUndoBtn').click();
+  const pending=await page.evaluate(()=>JSON.parse(localStorage.getItem('handballtrainer.localDraft.v1')).snapshot.pendingObject);
+  expect(pending.points).toHaveLength(3);
+  expectPoint(pending.points[1],450,250);
+  await page.reload();
+  const path=(await project(page)).objects[0];
+  expect(path.points).toEqual(pending.points);
+  expectPoint(path.points[0],350,200);expectPoint(path.points[1],450,250);
 });
 
 test('desktop groups retain chosen variants and tool order survives reload',async({page})=>{

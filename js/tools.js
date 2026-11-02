@@ -4,6 +4,7 @@
   // State is shared with the editor; dependencies provide explicit actions and controls.
   function createTools(editorState, deps) {
     function setTool(t, button=null) {
+      deps.resetMultiPathHistory();
       if (editorState.drawing && deps.isMultiPointPath(editorState.drawing) && t !== editorState.drawing.type) {
         editorState.drawing = null;
         editorState.lastMultiPathClickTime = 0;

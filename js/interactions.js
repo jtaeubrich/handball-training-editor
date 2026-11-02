@@ -25,6 +25,48 @@
 
     const MULTI_PATH_DOUBLE_CLICK_DISTANCE = 14;
 
+    let multiPathRedo = [];
+
+    function resetMultiPathHistory() {
+      multiPathRedo = [];
+    }
+
+    function redrawMultiPath() {
+      editorState.lastMultiPathClickTime = 0;
+      editorState.lastMultiPathClickPoint = null;
+      deps.draw();
+      if (editorState.drawing) deps.drawObject(deps.ctx, editorState.drawing, false);
+    }
+
+    function undoMultiPath() {
+      const path = editorState.drawing;
+      if (!path || !deps.isMultiPointPath(path)) return false;
+      const points = path.points.map(p => ({...p}));
+      points[points.length - 1] = {...points[points.length - 2]};
+      // The last point follows the pointer; remove the last fixed point as well.
+      if (path.points.length > 2) {
+        path.points.splice(-2);
+        path.points.push({...path.points[path.points.length - 1]});
+        deps.syncMultiPathExtents(path);
+      } else {
+        editorState.drawing = null;
+      }
+      multiPathRedo.push({path, points, after:editorState.drawing});
+      redrawMultiPath();
+      return true;
+    }
+
+    function redoMultiPath() {
+      const entry = multiPathRedo[multiPathRedo.length - 1];
+      if (!entry || entry.after !== editorState.drawing || entry.path.type !== editorState.tool) return false;
+      multiPathRedo.pop();
+      editorState.drawing = entry.path;
+      entry.path.points = entry.points;
+      deps.syncMultiPathExtents(entry.path);
+      redrawMultiPath();
+      return true;
+    }
+
     function cleanMultiPathPreviewPoints(o) {
       if (!o || !Array.isArray(o.points)) return;
 
@@ -44,6 +86,7 @@
       if (!editorState.drawing || !deps.isMultiPointPath(editorState.drawing) || !Array.isArray(editorState.drawing.points)) return;
 
       cleanMultiPathPreviewPoints(editorState.drawing);
+      resetMultiPathHistory();
 
       if (editorState.drawing.points.length >= 2 && deps.polylineLength(editorState.drawing.points) > 6) {
         editorState.objects.push(editorState.drawing);
@@ -61,6 +104,7 @@
     function cancelMultiPath() {
       if (!editorState.drawing || !deps.isMultiPointPath(editorState.drawing)) return;
       editorState.drawing = null;
+      resetMultiPathHistory();
       editorState.lastMultiPathClickTime = 0;
       editorState.lastMultiPathClickPoint = null;
       deps.draw();
@@ -253,6 +297,7 @@
         }
 
         if (deps.isMultiPointPath(editorState.tool)) {
+          resetMultiPathHistory();
           const now = performance.now();
 
           if (!editorState.drawing || editorState.drawing.type !== editorState.tool || !Array.isArray(editorState.drawing.points)) {
@@ -633,7 +678,7 @@
       });
     }
 
-    return { install, deleteSelected, getRotationHandle };
+    return { install, deleteSelected, getRotationHandle, undoMultiPath, redoMultiPath, resetMultiPathHistory };
   }
 
   global.HandballInteractions = { createInteractions };

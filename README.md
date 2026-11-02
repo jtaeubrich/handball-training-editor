@@ -186,7 +186,9 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v96)
+## Entwicklung und Regressionstests (v97)
+
+Während ein Mehrpunktpfad gezeichnet wird, entfernt Rückgängig jeweils den letzten gesetzten Punkt mit seinem Segment. Der verbleibende Pfad bleibt sichtbar und kann weitergezeichnet werden. Wiederholen stellt entfernte Punkte wieder her; ein neuer Punkt verwirft den zurückgenommenen Zweig. Nach dem Abschließen gilt Rückgängig wieder für den gesamten Pfad als Objekt.
 
 Angreifer mit und ohne Ball sowie Abwehrspieler bieten zusätzlich das Label-Set **Zahlen 1–10** und **Freie Eingabe** (bis zu 24 Zeichen). Die bisherigen Positionssets bleiben erhalten. Die gewählten Sets und Texte werden in Projektdateien und der lokalen Sicherung gespeichert; im SVG werden freie Texte korrekt maskiert.
 

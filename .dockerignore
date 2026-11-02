@@ -1,0 +1,7 @@
+**
+!server/
+!server/server.cjs
+!server/openai.cjs
+!server/Dockerfile
+!js/
+!js/*.js

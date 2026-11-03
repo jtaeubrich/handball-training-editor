@@ -141,7 +141,7 @@ test('mobile chat controls fit and the access code stays out of local storage',a
   expect(await objects(page)).toEqual([]);
 });
 
-test('only the active storyboard field is sent and rotated coordinates map to the court',async({page})=>{
+test('all storyboard fields are sent and active rotated coordinates map to the court',async({page})=>{
   await page.locator('#layoutGrid').selectOption('2x1');
   await choose(page,'feeder');await page.locator('#c').click({position:{x:240,y:240}});
   await page.locator('#activeCellSelect').selectOption({value:'1'});
@@ -153,10 +153,122 @@ test('only the active storyboard field is sent and rotated coordinates map to th
   });
   await send(page,'Torwart ins Tor');await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
   expect(request.scene).toMatchObject({cell:2,rotation:90,objects:[]});
+  expect(request.scene.layout).toEqual({cols:2,rows:1});
+  expect(request.scene.cells[0].objects[0]).toMatchObject({id:'object-0',type:'feeder'});
   const created=await objects(page);expect(created).toHaveLength(2);
   // Second cell: (1004,20), court bounds (1144,130,680,680).
   expect(created[1].x).toBeCloseTo(1824);expect(created[1].y).toBeCloseTo(470);
   expect(created[0].type).toBe('feeder');
+});
+
+const board = page => page.evaluate(() => ({layout:{...window.__editorState.layoutSettings},courts:window.__editorState.cellCourts,objects:window.__editorState.objects}));
+async function nextReply(page,commands,message='Felder aktualisiert.') {
+  await respond(page,{message,commands});
+  await page.locator('#aiChatPrompt').fill('Nächster Schritt');
+  await page.locator('#aiChatSend').click();
+  await expect(page.locator('#aiChatLog')).toContainText(message);
+}
+
+test('AI builds three phases, copies a field and edits another in one persistent undo step',async({page})=>{
+  const initial=await board(page);
+  await respond(page,{message:'Drei Phasen angelegt.',commands:[
+    {op:'layout',cols:3,rows:1},
+    {op:'configure_cell',cell:1,mode:'half',rotation:90},
+    ...reply.commands,
+    {op:'copy_cell',source:1,target:2},
+    {op:'configure_cell',cell:2,mode:'full',rotation:270},
+    {op:'configure_cell',cell:3,mode:'none',rotation:180},
+    {op:'select_cell',cell:3},
+    {op:'add_path',id:'finish',type:'shotCurve',points:[{x:10,y:12},{x:9,y:8},{x:10,y:4},{x:10,y:0}]}
+  ]});
+  await send(page,'Drei Phasen');
+  await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const created=await board(page);
+  expect(created.layout).toEqual({cols:3,rows:1,activeCell:2});
+  expect(created.courts.map(s=>[s.mode,s.rotation])).toEqual([['half',90],['full',270],['none',180]]);
+  expect(created.objects).toHaveLength(7);
+  expect(created.objects[0]).toMatchObject({x:500,y:452,label:'1'});
+  expect(created.objects[3]).toMatchObject({x:1484,y:796,label:'1'});
+  expect(created.objects[6].kind).toBe('path');
+  await page.locator('#aiChatClose').click();
+  await page.locator('#undoBtn').click();expect(await board(page)).toEqual(initial);
+  await page.locator('#redoBtn').click();expect(await board(page)).toEqual(created);
+  await page.evaluate(()=>{window.HandballExport.saveSvgText=async svg=>{window.__svg=svg;};});
+  await page.locator('#svgBtn').click();
+  expect(await page.evaluate(()=>new DOMParser().parseFromString(window.__svg,'image/svg+xml').querySelectorAll('text').length)).toBeGreaterThanOrEqual(4);
+  await page.reload();expect(await board(page)).toEqual(created);
+  let request;
+  await page.route('**/api/chat',route=>{
+    request=route.request().postDataJSON();
+    return route.fulfill({json:{message:'Kopie angepasst.',commands:[{op:'select_cell',cell:2},{op:'label',target:'object-3',label:'4'}]}});
+  });
+  await send(page,'Im zweiten Feld Spieler 1 in 4 umbenennen');
+  await expect(page.locator('#aiChatLog')).toContainText('Kopie angepasst.');
+  expect(request.scene.cells.map(c=>c.objects.length)).toEqual([3,3,1]);
+  expect(request.scene.cells[1].objects[0]).toMatchObject({x:8,y:10,id:'object-3'});
+  expect((await objects(page))[0].label).toBe('1');expect((await objects(page))[3].label).toBe('4');
+});
+
+for(const rotation of [0,90,180,270]) {
+  test(`mobile AI rotates existing players and multipoint paths to ${rotation} degrees`,async({page})=>{
+    await page.setViewportSize({width:390,height:844});
+    await respond(page,{message:'Ausgangsstellung.',commands:[
+      {op:'add_symbol',id:'one',type:'attacker',x:8,y:9,label:'1'},
+      {op:'label_offset',target:'one',x:10,y:-20},
+      {op:'add_path',id:'path',type:'runMulti',points:[{x:8,y:9},{x:7,y:8},{x:9,y:7}]}
+    ]});
+    await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+    const before=await board(page);
+    await nextReply(page,[{op:'configure_cell',cell:1,mode:'half',rotation}],`Gedreht auf ${rotation}.`);
+    const after=await board(page), a=rotation*Math.PI/180;
+    const rotate=p=>({x:500+(p.x-500)*Math.cos(a)-(p.y-470)*Math.sin(a),y:470+(p.x-500)*Math.sin(a)+(p.y-470)*Math.cos(a)});
+    const p=rotate(before.objects[0]);
+    expect(after.objects[0].x).toBeCloseTo(p.x);expect(after.objects[0].y).toBeCloseTo(p.y);
+    expect(after.objects[0].rotation).toBeCloseTo((before.objects[0].rotation+rotation)%360);
+    expect(after.objects[0].labelOffsetX).toBe(Math.round(10*Math.cos(a)+20*Math.sin(a)));
+    after.objects[1].points.forEach((p,i)=>{
+      const expected=rotate(before.objects[1].points[i]);expect(p.x).toBeCloseTo(expected.x);expect(p.y).toBeCloseTo(expected.y);
+    });
+    await page.locator('#aiChatClose').click();
+    await page.locator('#mobileUndoBtn').click();expect(await board(page)).toEqual(before);
+    await page.locator('#mobileRedoBtn').click();expect(await board(page)).toEqual(after);
+  });
+}
+
+test('layout reflow preserves metre positions, paths and references after removals',async({page})=>{
+  await respond(page,{message:'Zwei Felder.',commands:[{op:'layout',cols:2,rows:1},...reply.commands,
+    {op:'select_cell',cell:2},{op:'add_symbol',id:'other',type:'defender',x:10,y:10,label:'3'}]});
+  await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const before=await board(page);
+  await nextReply(page,[{op:'layout',cols:1,rows:2},{op:'configure_cell',cell:1,mode:'full',rotation:90},
+    {op:'select_cell',cell:1},{op:'remove',target:'object-0'},
+    {op:'move',target:'object-1',x:25,y:10},{op:'label_offset',target:'object-2',x:20,y:-30},
+    {op:'select_cell',cell:2},{op:'label',target:'object-3',label:'Lea'}]);
+  const after=await board(page);
+  expect(after.objects).toHaveLength(3);
+  expect(after.objects[0]).toMatchObject({x:500,y:635,label:'2'});
+  expect(after.objects[1]).toMatchObject({labelOffsetX:20,labelOffsetY:-30});
+  expect(after.objects[2]).toMatchObject({x:500,y:1494,label:'Lea'});
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await board(page)).toEqual(before);
+  await page.locator('#redoBtn').click();expect(await board(page)).toEqual(after);
+});
+
+test('invalid field batches never change objects, layout or history',async({page})=>{
+  await respond(page,reply);await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const before=await board(page);
+  for(const commands of [
+    [{op:'layout',cols:2,rows:1},{op:'select_cell',cell:3}],
+    [{op:'layout',cols:2,rows:1},{op:'select_cell',cell:2},{op:'remove',target:'object-0'}],
+    [{op:'layout',cols:2,rows:1},{op:'copy_cell',source:1,target:2},{op:'copy_cell',source:1,target:2}],
+    [{op:'layout',cols:2,rows:1},{op:'copy_cell',source:1,target:2},{op:'layout',cols:1,rows:1}],
+    [{op:'configure_cell',cell:1,mode:'full',rotation:45}]
+  ]) {
+    await respond(page,{message:'Ungültig.',commands});
+    await page.locator('#aiChatPrompt').fill('Ändern');await page.locator('#aiChatSend').click();
+    await expect(page.locator('#aiChatSend')).toBeEnabled();
+    expect(await board(page)).toEqual(before);
+  }
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
 });
 
 test('complex and multipoint commands remain native editable paths',async({page})=>{

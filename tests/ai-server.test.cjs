@@ -57,7 +57,7 @@ test('preflight works only for configured origins and auth is mandatory',async t
 test('unconfigured services are inert and health does not expose configuration',async t=>{
   const s=await service(t,{env:{}});
   const response=await s.post();assert.equal(response.status,503);assert.equal(s.calls(),0);
-  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:2});
+  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:3});
 });
 
 test('static serving cannot disclose environment files, Git data or server sources',async t=>{
@@ -180,4 +180,61 @@ test('invalid offsets and unsupported targets reject the whole command batch',()
     ]},scene));
   }
   assert.doesNotThrow(()=>protocol.validateReply(batch({...offset,x:-50,y:50}),scene));
+});
+
+const storyboard = {...scene,layout:{cols:1,rows:1},cells:[scene]};
+test('OpenAI adapter accepts storyboard context and strict field commands',async()=>{
+  const commands=[{op:'layout',cols:3,rows:1},
+    {op:'configure_cell',cell:2,mode:'full',rotation:90},
+    {op:'select_cell',cell:2},
+    {...validReply.commands[0],x:35},
+    {op:'copy_cell',source:2,target:3},
+    {op:'select_cell',cell:3}];
+  const reply={message:'Drei Felder angelegt.',commands};
+  const result=await requestOpenAI({...body,scene:storyboard},{apiKey:'fake',model:'test',fetchImpl:async(_url,options)=>{
+    const request=JSON.parse(options.body);
+    for(const op of ['layout','select_cell','configure_cell','copy_cell']) {
+      const schema=request.text.format.schema.properties.commands.items.anyOf.find(s=>s.properties.op.enum[0]===op);
+      assert.ok(schema);assert.equal(schema.additionalProperties,false);
+      assert.deepEqual(schema.required,Object.keys(schema.properties));
+      assert.ok(request.instructions.includes(op));
+    }
+    return upstream(reply);
+  }});
+  assert.deepEqual(result,reply);
+});
+
+test('field validation simulates command order, selection, copies and occupied cells',()=>{
+  const batch=commands=>({message:'Feldänderung',commands});
+  const layout={op:'layout',cols:2,rows:1};
+  const copy={op:'copy_cell',source:1,target:2};
+  for(const commands of [
+    [{...layout,cols:5}],[{...layout,cols:1.5}],[{...layout,rows:3}],
+    [layout,{op:'select_cell',cell:3}],
+    [layout,validReply.commands[0],{op:'select_cell',cell:2},{op:'remove',target:'new1'}],
+    [layout,validReply.commands[0],copy,copy],
+    [layout,validReply.commands[0],copy,{op:'layout',cols:1,rows:1}],
+    [{op:'configure_cell',cell:1,mode:'full',rotation:45}],
+    [{op:'configure_cell',cell:1,mode:'full',rotation:0},{op:'configure_cell',cell:1,mode:'half',rotation:0},{...validReply.commands[0],x:25}],
+    [layout,{op:'copy_cell',source:1,target:1}]
+  ]) assert.throws(()=>protocol.validateReply(batch(commands),storyboard));
+  assert.doesNotThrow(()=>protocol.validateReply(batch([layout,validReply.commands[0],copy,
+    {op:'select_cell',cell:1},{op:'remove',target:'new1'}]),storyboard));
+  assert.doesNotThrow(()=>protocol.validateReply(batch([layout,validReply.commands[0],
+    {op:'remove',target:'new1'},{op:'layout',cols:1,rows:1}]),storyboard));
+  assert.throws(()=>protocol.validateReply(batch([layout]),scene));
+});
+
+test('storyboard contexts reject duplicate IDs, mismatches and nested fields',()=>{
+  const object={id:'object-0',kind:'symbol',type:'attacker',label:'1',x:8,y:9,points:[]};
+  const first={...scene,objects:[object]};
+  const valid={...first,layout:{cols:2,rows:1},cells:[first,{...scene,cell:2}]};
+  assert.doesNotThrow(()=>validateRequest({...body,scene:valid}));
+  for(const invalid of [
+    {...valid,layout:{cols:3,rows:1}},
+    {...valid,rotation:90},
+    {...valid,cells:[first,{...scene,cell:2,objects:[object]}]},
+    {...valid,cells:[first,{...scene,cell:1}]},
+    {...valid,cells:[storyboard,{...scene,cell:2}]}
+  ]) assert.throws(()=>validateRequest({...body,scene:invalid}));
 });

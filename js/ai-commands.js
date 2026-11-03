@@ -12,6 +12,7 @@
   const identifier = {type:'string',pattern:'^[a-zA-Z0-9_-]{1,40}$'};
   const labelSchema = {type:'string',maxLength:24};
   const labelOffsetSchema = {type:'integer',minimum:-50,maximum:50};
+  const cellSchema = {type:'integer',minimum:1,maximum:8};
   function operation(op, properties) {
     const fields = {op:{type:'string',enum:[op]},...properties};
     return {type:'object',properties:fields,required:Object.keys(fields),additionalProperties:false};
@@ -21,6 +22,10 @@
     properties:{
       message:{type:'string',maxLength:6000},
       commands:{type:'array',maxItems:80,items:{anyOf:[
+        operation('layout',{cols:{type:'integer',minimum:1,maximum:4},rows:{type:'integer',minimum:1,maximum:2}}),
+        operation('select_cell',{cell:cellSchema}),
+        operation('configure_cell',{cell:cellSchema,mode:{type:'string',enum:['half','full','none']},rotation:{type:'integer',enum:[0,90,180,270]}}),
+        operation('copy_cell',{source:cellSchema,target:cellSchema}),
         operation('add_symbol',{id:identifier,type:{type:'string',enum:symbolTypes},x:{type:'number'},y:{type:'number'},label:labelSchema}),
         operation('add_path',{id:identifier,type:{type:'string',enum:pathTypes},points:{type:'array',minItems:2,maxItems:50,items:pointSchema}}),
         operation('move',{target:identifier,x:{type:'number'},y:{type:'number'}}),
@@ -50,8 +55,26 @@
     if (!Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.y < 0 || p.x > scene.width || p.y > scene.height) fail('Ein Punkt liegt außerhalb des aktiven Spielfelds.');
   }
 
-  function validateContext(scene) {
-    exact(scene,['cell','mode','rotation','width','height','objects']);
+  function validateContext(scene, nested=false) {
+    const storyboard = Object.hasOwn(scene,'cells') || Object.hasOwn(scene,'layout');
+    exact(scene,['cell','mode','rotation','width','height','objects',...(storyboard ? ['layout','cells'] : [])]);
+    if (storyboard) {
+      if (nested) fail('Verschachtelte Felder sind ungültig.');
+      exact(scene.layout,['cols','rows']);
+      const {cols,rows} = scene.layout;
+      if (!Number.isInteger(cols) || cols < 1 || cols > 4 || !Number.isInteger(rows) || rows < 1 || rows > 2 || !Array.isArray(scene.cells) || scene.cells.length !== cols*rows) fail('Ungültiges Feldlayout.');
+      const allIds = new Set();
+      scene.cells.forEach((cell,i) => {
+        validateContext(cell,true);
+        if (Object.hasOwn(cell,'cells') || cell.cell !== i+1) fail('Ungültige Feldnummer.');
+        for (const o of cell.objects) {
+          if (allIds.has(o.id)) fail('Eine Objektreferenz ist doppelt vergeben.');
+          allIds.add(o.id);
+        }
+      });
+      const activeCell = scene.cells[scene.cell-1];
+      if (!activeCell || ['cell','mode','rotation','width','height','objects'].some(k => JSON.stringify(activeCell[k]) !== JSON.stringify(scene[k]))) fail('Das aktive Feld stimmt nicht überein.');
+    }
     if (!Number.isInteger(scene.cell) || scene.cell < 1 || scene.cell > 8 || !['half','full','none'].includes(scene.mode) || ![0,90,180,270].includes(scene.rotation) || scene.width !== (scene.mode === 'full' ? 40 : 20) || scene.height !== 20 || !Array.isArray(scene.objects) || scene.objects.length > 1200) fail('Ungültiger Skizzenkontext.');
     const ids = new Set();
     for (const object of scene.objects) {
@@ -73,30 +96,63 @@
   function validateReply(reply, scene) {
     exact(reply,['message','commands']);
     if (typeof reply.message !== 'string' || !reply.message.trim() || reply.message.length > 6000 || !Array.isArray(reply.commands) || reply.commands.length > 80) fail('Die KI-Antwort enthält keine gültigen Zeichenbefehle.');
-    const ids = new Map(scene.objects.map(o => [o.id,o]));
+    const cells = JSON.parse(JSON.stringify(scene.cells || [scene]));
+    let active = scene.cell;
+    let current = cells.find(c => c.cell === active);
+    const ids = new Map(cells.flatMap(cell => cell.objects.map(o => [o.id,{...o,cell:cell.cell}])));
     const used = new Set(ids.keys());
     for (const c of reply.commands) {
       if (!plain(c)) fail('Ungültiger Zeichenbefehl.');
-      if (c.op === 'add_symbol') {
-        exact(c,['op','id','type','x','y','label']); id(c.id); label(c.label); point({x:c.x,y:c.y},scene);
+      if (['layout','select_cell','configure_cell','copy_cell'].includes(c.op)) {
+        if (!scene.cells) fail('Dieser Editor unterstützt noch keine Feldbefehle. Bitte neu laden.');
+        const getCell = n => {
+          if (!Number.isInteger(n) || n < 1 || n > cells.length) fail('Die Feldnummer ist nicht vorhanden.');
+          return cells[n-1];
+        };
+        if (c.op === 'layout') {
+          exact(c,['op','cols','rows']);
+          if (!Number.isInteger(c.cols) || c.cols < 1 || c.cols > 4 || !Number.isInteger(c.rows) || c.rows < 1 || c.rows > 2) fail('Erlaubt sind 1–4 Spalten und 1–2 Reihen.');
+          const count = c.cols*c.rows;
+          if ([...ids.values()].some(o => o.cell > count)) fail('Felder mit Objekten dürfen nicht entfernt werden.');
+          while (cells.length < count) cells.push({...cells.at(-1),cell:cells.length+1,objects:[]});
+          cells.length = count; active = Math.min(active,count);
+        } else if (c.op === 'select_cell') {
+          exact(c,['op','cell']); getCell(c.cell); active = c.cell;
+        } else if (c.op === 'configure_cell') {
+          exact(c,['op','cell','mode','rotation']);
+          const cell = getCell(c.cell);
+          if (!['half','full','none'].includes(c.mode) || ![0,90,180,270].includes(c.rotation)) fail('Ungültige Feldausrichtung.');
+          Object.assign(cell,{mode:c.mode,rotation:c.rotation,width:c.mode === 'full' ? 40 : 20});
+        } else {
+          exact(c,['op','source','target']);
+          const source = getCell(c.source), target = getCell(c.target);
+          if (c.source === c.target || [...ids.values()].some(o => o.cell === c.target)) fail('Kopieren ist nur in ein anderes, leeres Feld möglich.');
+          Object.assign(target,{mode:source.mode,rotation:source.rotation,width:source.width});
+          // Copies become addressable with fresh IDs in the next request.
+          for (const o of [...ids.values()].filter(o => o.cell === c.source)) ids.set(Symbol('copy'),{...o,cell:c.target});
+        }
+        current = cells.find(cell => cell.cell === active);
+      } else if (c.op === 'add_symbol') {
+        exact(c,['op','id','type','x','y','label']); id(c.id); label(c.label); point({x:c.x,y:c.y},current);
         if (!symbolTypes.includes(c.type)) fail('Unbekanntes Spielersymbol.');
         if (c.label && !['attacker','attackerBall','defender'].includes(c.type)) fail('Dieses Symbol unterstützt keine Beschriftung.');
         if (used.has(c.id)) fail('Eine Objektreferenz ist doppelt vergeben.');
-        used.add(c.id); ids.set(c.id,{kind:'symbol',type:c.type});
+        used.add(c.id); ids.set(c.id,{kind:'symbol',type:c.type,cell:active});
       } else if (c.op === 'add_path') {
         exact(c,['op','id','type','points']); id(c.id);
         if (!pathTypes.includes(c.type) || !Array.isArray(c.points) || c.points.length < 2 || c.points.length > 50) fail('Ungültiger Pfad.');
         const multi = c.type.endsWith('Multi');
         const curve = c.type === 'complexRun' || c.type.endsWith('Curve');
         if ((!multi && !curve && c.points.length !== 2) || (curve && c.points.length !== 4)) fail('Gerade Wege benötigen 2 Punkte, Kurven 4 Punkte.');
-        c.points.forEach(p => point(p,scene));
+        c.points.forEach(p => point(p,current));
         if (used.has(c.id)) fail('Eine Objektreferenz ist doppelt vergeben.');
-        used.add(c.id); ids.set(c.id,{kind:'path',type:c.type});
+        used.add(c.id); ids.set(c.id,{kind:'path',type:c.type,cell:active});
       } else if (['move','label','label_offset','remove'].includes(c.op)) {
         exact(c,c.op === 'move' || c.op === 'label_offset' ? ['op','target','x','y'] : c.op === 'label' ? ['op','target','label'] : ['op','target']);
         id(c.target);
         if (!ids.has(c.target)) fail('Die KI verweist auf ein nicht vorhandenes Objekt.');
-        if (c.op === 'move') point({x:c.x,y:c.y},scene);
+        if (ids.get(c.target).cell !== active) fail('Vor der Objektänderung das betreffende Feld auswählen.');
+        if (c.op === 'move') point({x:c.x,y:c.y},current);
         if (c.op === 'label') label(c.label);
         if (c.op === 'label_offset') {
           labelOffset(c.x); labelOffset(c.y);
@@ -113,6 +169,7 @@
     const angle = rotation * Math.PI / 180, cos = Math.cos(angle), sin = Math.sin(angle);
     const cx = bounds.x + bounds.w/2, cy = bounds.y + bounds.h/2;
     return {
+      key:JSON.stringify([bounds.x,bounds.y,bounds.w,bounds.h,rotation,mode]),
       toWorld(p) {
         const x = (p.x/width-.5)*bounds.w, y = (p.y/20-.5)*bounds.h;
         return {x:cx+x*cos-y*sin,y:cy+x*sin+y*cos};
@@ -197,5 +254,100 @@
     return result;
   }
 
-  return {symbolTypes,pathTypes,replySchema,validateContext,validateReply,createFrame,describeScene,planObjects};
+  function describeProject(objects,layout,courts,deps) {
+    const contexts = deps.cells(layout,courts).map((cell,i) => {
+      const settings = courts[i];
+      return describeScene(objects,cell,settings,settings.mode === 'none' ? cell : deps.bounds(settings.mode,settings.rotation,cell));
+    });
+    const context = contexts[layout.activeCell];
+    return {...context,scene:{...context.scene,layout:{cols:layout.cols,rows:layout.rows},cells:contexts.map(c => c.scene)}};
+  }
+
+  // Plan the complete answer on detached data. No editor state changes before success.
+  function planProject(project,context,reply,deps) {
+    validateReply(reply,context.scene);
+    const result = JSON.parse(JSON.stringify(project));
+    let objects = result.objects;
+    let cells = deps.cells(result.layout,result.cellCourts);
+    const owner = o => cells.findIndex(cell => {
+      const x = o.kind === 'symbol' ? o.x : o.x1, y = o.kind === 'symbol' ? o.y : o.y1;
+      return x >= cell.x && x <= cell.x+cell.w && y >= cell.y && y <= cell.y+cell.h;
+    });
+    let owners = objects.map(owner);
+    let references = new Map(objects.map((o,i) => [`object-${i}`,i]));
+    function frames() {
+      return cells.map((cell,i) => {
+        const s = result.cellCourts[i];
+        return createFrame(s.mode === 'none' ? cell : deps.bounds(s.mode,s.rotation,cell),s.rotation,s.mode);
+      });
+    }
+    function transform(o,from,to,delta) {
+      if (from.key === to.key && !delta) return;
+      for (const [x,y] of [['x','y'],['x1','y1'],['x2','y2'],['cx1','cy1'],['cx2','cy2']]) {
+        if (Number.isFinite(o[x]) && Number.isFinite(o[y])) {
+          const p = to.toWorld(from.fromWorld({x:o[x],y:o[y]})); o[x]=p.x; o[y]=p.y;
+        }
+      }
+      if (Array.isArray(o.points)) o.points = o.points.map(p => ({...p,...to.toWorld(from.fromWorld(p))}));
+      if (delta) {
+        if (Number.isFinite(o.rotation)) o.rotation = ((o.rotation+delta)%360+360)%360;
+        const a = delta*Math.PI/180, x = o.labelOffsetX || 0, y = o.labelOffsetY || 0;
+        if (Object.hasOwn(o,'labelOffsetX')) { o.labelOffsetX=Math.round(x*Math.cos(a)-y*Math.sin(a)) || 0; o.labelOffsetY=Math.round(x*Math.sin(a)+y*Math.cos(a)) || 0; }
+      }
+    }
+    for (const c of reply.commands) {
+      if (['layout','configure_cell','copy_cell'].includes(c.op)) {
+        const oldFrames = frames(), rotations = result.cellCourts.map(s => s.rotation);
+        if (c.op === 'layout') {
+          Object.assign(result.layout,{cols:c.cols,rows:c.rows,activeCell:Math.min(result.layout.activeCell,c.cols*c.rows-1)});
+          while (result.cellCourts.length < c.cols*c.rows) result.cellCourts.push({...result.cellCourts.at(-1)});
+          result.cellCourts.length = c.cols*c.rows;
+        } else if (c.op === 'configure_cell') {
+          Object.assign(result.cellCourts[c.cell-1],{mode:c.mode,rotation:c.rotation});
+        } else {
+          result.cellCourts[c.target-1] = {...result.cellCourts[c.source-1]};
+        }
+        cells = deps.cells(result.layout,result.cellCourts);
+        const newFrames = frames();
+        objects.forEach((o,i) => {
+          const n = owners[i];
+          if (n >= 0 && newFrames[n]) transform(o,oldFrames[n],newFrames[n],result.cellCourts[n].rotation-rotations[n]);
+        });
+        if (c.op === 'copy_cell') {
+          const copies = objects.flatMap((o,i) => owners[i] === c.source-1 ? [JSON.parse(JSON.stringify(o))] : []);
+          copies.forEach(o => transform(o,newFrames[c.source-1],newFrames[c.target-1],0));
+          objects.push(...copies); owners.push(...copies.map(() => c.target-1));
+        }
+      } else if (c.op === 'select_cell') result.layout.activeCell = c.cell-1;
+      else {
+        const n = result.layout.activeCell;
+        const description = describeScene(objects,cells[n],result.cellCourts[n],result.cellCourts[n].mode === 'none' ? cells[n] : deps.bounds(result.cellCourts[n].mode,result.cellCourts[n].rotation,cells[n]));
+        description.references = new Map([...references].filter(([,i]) => owners[i] === n));
+        description.scene.objects = [...description.references].map(([id,i]) => ({id,kind:objects[i].kind,type:objects[i].type}));
+        const next = planObjects(objects,description,{message:reply.message,commands:[c]},{...deps,initialPlayerRotation:(type,x,y) => {
+          const s = result.cellCourts[n], f = description.frame, p = f.fromWorld({x,y});
+          if (s.mode === 'none') return 0;
+          let target;
+          if (['attacker','attackerBall'].includes(type)) target = s.mode === 'half' ? {x:10,y:0} : {x:p.x <= 20 ? 0 : 40,y:10};
+          else if (['defender','goalkeeper'].includes(type)) target = s.mode === 'half' ? {x:p.x,y:20} : {x:20,y:p.y};
+          else return 0;
+          const goal = f.toWorld(target);
+          return ((Math.atan2(goal.y-y,goal.x-x)*180/Math.PI+90)%360+360)%360;
+        }});
+        if (c.op === 'remove') {
+          const removed = references.get(c.target);
+          owners.splice(removed,1);
+          references = new Map([...references].filter(([key]) => key !== c.target).map(([key,i]) => [key,i > removed ? i-1 : i]));
+        } else if (c.op === 'add_symbol' || c.op === 'add_path') {
+          references.set(c.id,next.length-1); owners.push(n);
+        }
+        objects = next;
+      }
+    }
+    result.objects = objects;
+    result.court = {...result.cellCourts[0]};
+    return result;
+  }
+
+  return {symbolTypes,pathTypes,replySchema,validateContext,validateReply,createFrame,describeScene,describeProject,planObjects,planProject};
 });

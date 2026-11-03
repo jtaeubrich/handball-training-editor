@@ -186,13 +186,13 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v101)
+## Entwicklung und Regressionstests (v102)
 
 Auf Smartphones funktioniert der Zweifinger-Zoom im gesamten Zeichenbereich, einschließlich der grauen Ränder und der freien Fläche unter einem verkleinerten Canvas. Ein Finger auf dem Hintergrund verschiebt die Ansicht; auf dem Canvas bleibt Zeichnen und Auswählen erhalten. Ein zweiter Finger hebt einen bereits begonnenen Zeichenschritt auf und steuert ausschließlich die Ansicht, bis beide Finger losgelassen sind.
 
 Die KI kann mit `label_offset` den Beschriftungsversatz von Angreifern, Abwehrspielern und Wegen setzen, z. B. „Beschriftung von Spieler 2 um 30 Pixel nach oben“. Der aktuelle Versatz wird mit dem Skizzenzustand übertragen. Der Befehl setzt absolute ganzzahlige X-/Y-Werte von −50 bis +50 Canvas-Pixeln, wie die manuelle Oberfläche. Rückgängig, lokale Sicherung und Export bleiben erhalten.
 
-**KI-Chat:** Das aufklappbare Chatfenster kann das aktive Feld anhand einer Textbeschreibung bearbeiten: Spieler und Geräte platzieren, Nummern und freie Labels vergeben, Wege zeichnen sowie vorhandene Objekte verschieben oder gezielt entfernen. Alle Befehle einer Antwort werden gemeinsam geprüft und bilden einen Rückgängig-Schritt. Bei zwischenzeitlichen manuellen Änderungen werden die KI-Änderungen verworfen. Der Chat ist auch auf Smartphones bedienbar; Nachrichten werden erst beim Senden übertragen.
+**KI-Chat:** Das aufklappbare Chatfenster kann alle Skizzenfelder anhand einer Textbeschreibung bearbeiten: Spieler und Geräte platzieren, Nummern und freie Labels vergeben, Wege zeichnen sowie vorhandene Objekte verschieben oder gezielt entfernen. Seit v102 kann die KI bis zu acht Felder anordnen, einzelne Felder auswählen, Halb-/Ganzfeld oder freie Fläche einstellen, in 90°-Schritten drehen und Feldinhalte in ein leeres Feld kopieren. Beispiel: „Erstelle drei nebeneinanderliegende Halbfelder und zeige Ausgangsstellung, Pass und Torabschluss.“ Bestehende Inhalte werden mitgeführt. Alle Befehle einer Antwort werden gemeinsam geprüft und bilden einschließlich Feldlayout einen Rückgängig-Schritt. Bei zwischenzeitlichen manuellen Änderungen werden die KI-Änderungen verworfen. Der Chat ist auch auf Smartphones bedienbar; Nachrichten und alle Skizzenfelder werden erst beim Senden übertragen. Für die neuen Feldbefehle muss auch der KI-Dienst aktualisiert sein (`commandVersion:3`).
 
 Für echte KI-Antworten braucht der Editor einen separat eingerichteten OpenAI-Dienst. GitHub Pages stellt nur die Oberfläche bereit. Node-Dienst, Docker-Datei, Zugangsschutz und Einrichtung stehen unter [server/README.md](server/README.md). Ohne Dienstadresse und serverseitige Konfiguration ist noch kein echter KI-Chat möglich. OpenAI-Schlüssel gehören ausschließlich auf den Server. Server- und Browser-Tests verwenden kontrollierte Antworten und verursachen keine API-Kosten.
 

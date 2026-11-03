@@ -996,7 +996,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v101</span>
+    <span>Einstellungen · v102</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1202,7 +1202,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v101</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v102</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1833,7 +1833,7 @@
     <button id="aiChatClose" type="button" aria-label="KI-Chat schließen">×</button>
   </div>
   <div class="ai-chat-content">
-  <p class="ai-chat-intro">Beschreibe deine Übung oder eine Änderung. Beim Senden werden deine Nachricht, der Chatverlauf und das aktive Skizzenfeld an den KI-Dienst und OpenAI übertragen.</p>
+  <p class="ai-chat-intro">Beschreibe deine Übung oder eine Änderung – auch mehrere Felder und ihre Ausrichtung. Beim Senden werden deine Nachricht, der Chatverlauf und alle Skizzenfelder an den KI-Dienst und OpenAI übertragen.</p>
   <details id="aiChatSettings" class="ai-chat-settings">
     <summary>KI-Verbindung einrichten</summary>
     <label for="aiChatEndpoint">Adresse des KI-Dienstes</label>
@@ -2035,16 +2035,15 @@
     return hasFullCourt ? STORYBOARD_FULL_ROW_H : STORYBOARD_CELL_H;
   }
 
-  function storyboardCells() {
-    ensureCellCourts();
+  function storyboardCells(layout=editorState.layoutSettings,courts=editorState.cellCourts) {
     const cells = [];
     let idx = 0;
     let y = STORYBOARD_PAD;
 
-    for (let row = 0; row < editorState.layoutSettings.rows; row++) {
-      const rowHeight = storyboardRowHeight(row);
+    for (let row = 0; row < layout.rows; row++) {
+      const rowHeight = courts.slice(row*layout.cols,(row+1)*layout.cols).some(s => s.mode === 'full') ? STORYBOARD_FULL_ROW_H : STORYBOARD_CELL_H;
 
-      for (let col = 0; col < editorState.layoutSettings.cols; col++) {
+      for (let col = 0; col < layout.cols; col++) {
         cells.push({
           index: idx++,
           row,
@@ -2293,7 +2292,15 @@
   editorState.objects = [];
   const historyManager = window.HandballStateHistory.createHistory({
     initialObjects: editorState.objects,
-    maxEntries: 100
+    maxEntries: 100,
+    captureMetadata: () => ({layout:editorState.layoutSettings,courts:editorState.cellCourts}),
+    restoreMetadata: metadata => {
+      editorState.layoutSettings = metadata.layout;
+      editorState.cellCourts = metadata.courts;
+      layoutGrid.value = `${metadata.layout.cols}x${metadata.layout.rows}`;
+      setActiveCell(metadata.layout.activeCell,false);
+      resizeCanvasForStoryboard();
+    }
   });
 
   editorState.tool = 'select';
@@ -3946,7 +3953,7 @@
 
   function getProjectData() {
     return {
-      version: 101,
+      version: 102,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
@@ -4211,22 +4218,25 @@
       editorState.draggingLabelOffset || editorState.touchGestureSuppressEditor),
     signature: aiSignature,
     capture: () => {
-      const cell = storyboardCells()[editorState.layoutSettings.activeCell];
-      const settings = editorState.courtSettings;
-      const bounds = settings.mode === 'none' ? cell : cellCourtRect(settings.mode,settings.rotation,cell);
       return {
-        ...aiCommands.describeScene(editorState.objects,cell,settings,bounds),
+        ...aiCommands.describeProject(editorState.objects,editorState.layoutSettings,editorState.cellCourts,{cells:storyboardCells,bounds:cellCourtRect}),
         signature:aiSignature(),
         defaults:{symbolSize:+symbolSize.value,strokeWidth:+strokeWidth.value,
           strokeColor:strokeColor.value,markerColor:editorState.markerColor}
       };
     },
     apply: (snapshot,reply) => {
-      const objects = aiCommands.planObjects(editorState.objects,snapshot,reply,{
-        model:objectModel,defaults:snapshot.defaults,initialPlayerRotation
+      const project = aiCommands.planProject(getProjectData(),snapshot,reply,{
+        model:objectModel,defaults:snapshot.defaults,cells:storyboardCells,bounds:cellCourtRect
       });
       setTool('select');
-      editorState.objects = objects;
+      editorState.objects = project.objects;
+      editorState.layoutSettings = {cols:project.layout.cols,rows:project.layout.rows,activeCell:project.layout.activeCell};
+      editorState.cellCourts = project.cellCourts;
+      layoutGrid.value = `${project.layout.cols}x${project.layout.rows}`;
+      setActiveCell(project.layout.activeCell,false);
+      resizeCanvasForStoryboard();
+      clearSelection();
       commit();
       updateProperties();
       draw();
@@ -4285,7 +4295,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v101 =====
+  // ===== PWA / Service Worker v102 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4296,7 +4306,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v101-reload';
+      const reloadKey = 'handballtrainer-sw-v102-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4315,7 +4325,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v101 registration OK');
+        console.info('[Handballtrainer] Service Worker v102 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

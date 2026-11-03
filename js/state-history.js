@@ -5,13 +5,19 @@
     return JSON.parse(JSON.stringify(value));
   }
 
-  function createHistory({ initialObjects = [], maxEntries = 100 } = {}) {
-    let history = [deepClone(initialObjects)];
+  function createHistory({ initialObjects = [], maxEntries = 100, captureMetadata, restoreMetadata } = {}) {
+    const entry = objects => captureMetadata ? deepClone({objects,metadata:captureMetadata()}) : deepClone(objects);
+    const unpack = state => {
+      const copy = deepClone(state);
+      if (captureMetadata) { restoreMetadata(copy.metadata); return copy.objects; }
+      return copy;
+    };
+    let history = [entry(initialObjects)];
     let redoStack = [];
 
     return {
       commit(objects) {
-        history.push(deepClone(objects));
+        history.push(entry(objects));
         if (history.length > maxEntries) history.shift();
         redoStack = [];
       },
@@ -19,18 +25,18 @@
       undo() {
         if (history.length <= 1) return null;
         redoStack.push(history.pop());
-        return deepClone(history[history.length - 1]);
+        return unpack(history[history.length - 1]);
       },
 
       redo() {
         if (!redoStack.length) return null;
         const state = redoStack.pop();
         history.push(deepClone(state));
-        return deepClone(state);
+        return unpack(state);
       },
 
       reset(objects) {
-        history = [deepClone(objects)];
+        history = [entry(objects)];
         redoStack = [];
       },
 

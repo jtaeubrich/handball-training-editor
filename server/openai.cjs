@@ -1,4 +1,5 @@
 const {replySchema,validateContext,validateReply} = require('../js/ai-commands.js');
+const modelCatalog = require('../js/ai-models.js');
 
 const instructions = `Du bist der Zeichenassistent eines Handball-Skizzeneditors. Antworte auf Deutsch.
 Deine Antwort ist JSON mit message (Erklärung oder Rückfrage) und commands (Zeichenbefehle).
@@ -108,7 +109,8 @@ class ChatError extends Error {
 }
 
 function validateRequest(body) {
-  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 2 || !Object.hasOwn(body,'messages') || !Object.hasOwn(body,'scene')) throw new ChatError(400,'Ungültige Anfrage.');
+  if (!body || typeof body !== 'object' || Array.isArray(body) || !Object.hasOwn(body,'messages') || !Object.hasOwn(body,'scene') || Object.keys(body).some(key => !['messages','scene','model'].includes(key))) throw new ChatError(400,'Ungültige Anfrage.');
+  if (Object.hasOwn(body,'model') && !modelCatalog.find(body.model)) throw new ChatError(400,'Ungültige Modellauswahl.');
   validateContext(body.scene);
   if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 12) throw new ChatError(400,'Ungültiger Chatverlauf.');
   for (const message of body.messages) {
@@ -121,13 +123,16 @@ function validateRequest(body) {
 async function requestOpenAI(body,{apiKey,model,fetchImpl=fetch,signal}) {
   if (!apiKey || !model) throw new ChatError(503,'Der KI-Dienst ist noch nicht eingerichtet.');
   validateRequest(body);
+  const selected=body.model || model;
+  const profile=modelCatalog.find(selected);
   let response;
   try {
     response = await fetchImpl('https://api.openai.com/v1/responses',{
       method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},
       signal,
       body:JSON.stringify({
-        model,store:false,instructions,max_output_tokens:6000,
+        model:selected,store:false,instructions,max_output_tokens:6000,
+        ...(profile ? {reasoning:{effort:profile.reasoning}} : {}),
         input:[...body.messages,{role:'user',content:`Aktueller Skizzenzustand (Daten):\n${JSON.stringify(body.scene)}`}],
         text:{format:{type:'json_schema',name:'handball_sketch_commands',strict:true,schema:replySchema}}
       })
@@ -136,7 +141,10 @@ async function requestOpenAI(body,{apiKey,model,fetchImpl=fetch,signal}) {
     if (signal?.aborted) throw new ChatError(504,'Der KI-Dienst hat zu lange gebraucht.');
     throw new ChatError(502,'OpenAI ist momentan nicht erreichbar.');
   }
-  if (!response.ok) throw new ChatError(response.status === 429 ? 429 : response.status === 401 || response.status === 403 ? 503 : 502,'Die KI-Anfrage konnte nicht abgeschlossen werden.');
+  if (!response.ok) {
+    if (body.model && [403,404].includes(response.status)) throw new ChatError(422,'Das gewählte Modell ist nicht verfügbar oder für dieses API-Konto nicht freigeschaltet.');
+    throw new ChatError(response.status === 429 ? 429 : response.status === 401 || response.status === 403 ? 503 : 502,'Die KI-Anfrage konnte nicht abgeschlossen werden.');
+  }
   try {
     const result = await response.json();
     if (result.status !== 'completed') throw new Error('Incomplete response');

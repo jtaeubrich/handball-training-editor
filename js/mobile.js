@@ -4,6 +4,7 @@
   // State is shared with the editor; dependencies provide explicit actions and controls.
   function createMobile(editorState, deps) {
     const canvasScroller = deps.canvas.closest('main');
+    const gestureSurface = canvasScroller || deps.canvas;
 
     const touchPointers = new Map();
 
@@ -62,10 +63,10 @@
       deps.draw();
     }
 
-    function safeCaptureTouchPointer(pointerId) {
+    function safeCaptureTouchPointer(pointerId, target=gestureSurface) {
       try {
-        if (!deps.canvas.hasPointerCapture(pointerId)) {
-          deps.canvas.setPointerCapture(pointerId);
+        if (!target.hasPointerCapture(pointerId)) {
+          target.setPointerCapture(pointerId);
         }
       } catch (_) {
         // Safari may reject capture during edge/cancel transitions.
@@ -94,9 +95,8 @@
         y:(midpoint.y - r.top) * deps.canvas.height / r.height
       };
 
-      // Keep BOTH pointers captured by the canvas. The previous implementation
-      // released capture here; on iOS that could cause pointerup/cancel to be lost
-      // when a finger moved outside the canvas and leave the editor blocked.
+      // Capture both pointers on the viewport, including touches that started on
+      // its margins or on the empty wrapper below a zoomed-out canvas.
       for (const pointerId of touchPointers.keys()) {
         safeCaptureTouchPointer(pointerId);
       }
@@ -418,7 +418,7 @@
 
       editorState.touchGestureCheckpoint = null;
 
-      deps.canvas.addEventListener('pointerdown', e => {
+      gestureSurface.addEventListener('pointerdown', e => {
         if (e.pointerType !== 'touch') return;
 
         // If Safari ever left a stale touch behind, starting a brand-new physical
@@ -433,10 +433,13 @@
 
         touchPointers.set(e.pointerId, {
           x:e.clientX,
-          y:e.clientY
+          y:e.clientY,
+          onCanvas:e.target === deps.canvas
         });
 
-        safeCaptureTouchPointer(e.pointerId);
+        // A single canvas touch still draws/selects. Background touches must not
+        // be retargeted to the canvas and accidentally continue a pending path.
+        safeCaptureTouchPointer(e.pointerId,e.target === deps.canvas ? deps.canvas : gestureSurface);
 
         if (touchPointers.size >= 2) {
           if (!editorState.touchGestureActive) beginTwoFingerGesture();
@@ -449,13 +452,15 @@
         }
       }, {capture:true, passive:false});
 
-      deps.canvas.addEventListener('pointermove', e => {
+      gestureSurface.addEventListener('pointermove', e => {
         if (e.pointerType !== 'touch' ||
             !touchPointers.has(e.pointerId)) return;
 
+        const previous = touchPointers.get(e.pointerId);
         touchPointers.set(e.pointerId, {
           x:e.clientX,
-          y:e.clientY
+          y:e.clientY,
+          onCanvas:previous.onCanvas
         });
 
         if (editorState.touchGestureActive) {
@@ -465,23 +470,30 @@
         } else if (editorState.touchGestureSuppressEditor) {
           e.preventDefault();
           e.stopImmediatePropagation();
+        } else if (!previous.onCanvas && canvasScroller) {
+          // Native scrolling is disabled so the browser cannot steal the second
+          // touch. Preserve one-finger panning on the viewport background.
+          canvasScroller.scrollLeft += previous.x - e.clientX;
+          canvasScroller.scrollTop += previous.y - e.clientY;
+          e.preventDefault();
+          e.stopImmediatePropagation();
         }
       }, {capture:true, passive:false});
 
-      deps.canvas.addEventListener(
+      gestureSurface.addEventListener(
         'pointerup',
         finishTouchPointer,
         {capture:true, passive:false}
       );
 
-      deps.canvas.addEventListener(
+      gestureSurface.addEventListener(
         'pointercancel',
         finishTouchPointer,
         {capture:true, passive:false}
       );
 
       ['gesturestart','gesturechange','gestureend'].forEach(type => {
-        deps.canvas.addEventListener(type, e => {
+        gestureSurface.addEventListener(type, e => {
           e.preventDefault();
         }, {passive:false});
       });
@@ -489,17 +501,14 @@
       window.addEventListener('pointerup', e => {
         if (e.pointerType !== 'touch') return;
         if (touchPointers.has(e.pointerId)) {
-          touchPointers.delete(e.pointerId);
-        }
-        if (touchPointers.size === 0 && !editorState.touchGestureActive) {
-          editorState.touchGestureSuppressEditor = false;
-          editorState.touchGestureCheckpoint = null;
+          finishTouchPointer(e);
         }
       });
 
       window.addEventListener('pointercancel', e => {
         if (e.pointerType !== 'touch') return;
-        touchPointers.delete(e.pointerId);
+        if (!touchPointers.has(e.pointerId)) return;
+        finishTouchPointer(e);
 
         if (touchPointers.size === 0) {
           resetTouchGestureState(true);

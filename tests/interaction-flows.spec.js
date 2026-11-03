@@ -225,6 +225,75 @@ test('two-finger zoom rolls back first-finger edits and recovers after cancellat
   expect((await project(page)).objects).toHaveLength(1);
 });
 
+for(const start of ['wrapper-background','viewport-margin','canvas-then-background','background-then-canvas']){
+  test(`two-finger zoom works across the full drawing viewport: ${start}`,async({page,browserName})=>{
+    test.skip(browserName!=='chromium','Trusted multi-touch injection uses the Chromium debugging protocol.');
+    await page.setViewportSize({width:390,height:844});
+    await page.locator('#zoomRange').evaluate(input=>{input.value='25';input.dispatchEvent(new Event('input'));});
+    await choose(page,'feeder');await click(page,500,240);
+    const before=(await project(page)).objects;
+    const area=await page.locator('main').boundingBox();
+    const inside=await at(page,450,260);
+    const background={x:120,y:area.y+450};
+    let first,second;
+    if(start==='wrapper-background'){first={x:100,y:background.y};second={x:220,y:background.y};}
+    else if(start==='viewport-margin'){first={x:2,y:area.y+100};second={x:2,y:area.y+230};}
+    else if(start==='canvas-then-background'){first=inside;second=background;}
+    else {first=background;second=inside;}
+    const targets=await page.evaluate(points=>points.map(p=>{
+      const el=document.elementFromPoint(p.x,p.y);return {tag:el.tagName,onCanvas:el.id==='c'};
+    }),[first,second]);
+    expect(targets.some(t=>!t.onCanvas)).toBe(true);
+    if(start==='wrapper-background')expect(targets.every(t=>t.tag==='DIV')).toBe(true);
+    if(start==='viewport-margin')expect(targets.every(t=>t.tag==='MAIN')).toBe(true);
+    const cdp=await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setTouchEmulationEnabled',{enabled:true});
+    const touch=(type,points)=>cdp.send('Input.dispatchTouchEvent',{type,touchPoints:points.map(p=>({...p,radiusX:2,radiusY:2}))});
+    await touch('touchStart',[{...first,id:1}]);
+    await touch('touchStart',[{...first,id:1},{...second,id:2}]);
+    // Spread along the joining axis, keeping all contacts within the viewport.
+    const center={x:(first.x+second.x)/2,y:(first.y+second.y)/2};
+    const expand=p=>({x:center.x+(p.x-center.x)*1.3,y:center.y+(p.y-center.y)*1.3});
+    const movedFirst=expand(first),movedSecond=expand(second);
+    await touch('touchMove',[{...movedFirst,id:1},{...movedSecond,id:2}]);
+    // Lifting one finger must not turn the remaining finger into a selection.
+    await touch('touchEnd',[{...movedFirst,id:1}]);
+    await touch('touchMove',[{x:inside.x,y:inside.y,id:1}]);
+    await touch('touchEnd',[]);
+    const after=await project(page);
+    expect(after.layout.zoomPercent).toBeGreaterThan(25);expect(after.objects).toEqual(before);
+    expect(await page.evaluate(()=>window.__editorState.selectionRect)).toBeNull();
+    expect(await page.evaluate(()=>window.visualViewport.scale)).toBe(1);
+    await page.locator('#mobileUndoBtn').click();expect((await project(page)).objects).toEqual([]);
+    await page.locator('#mobileRedoBtn').click();expect((await project(page)).objects).toEqual(before);
+    const next=await at(page,500,300);
+    await touch('touchStart',[{...next,id:3}]);await touch('touchEnd',[]);
+    expect((await project(page)).objects).toHaveLength(2);
+  });
+}
+
+test('background touches pan without selection and window cancellation clears the zoom gesture',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#zoomRange').evaluate(input=>{input.value='100';input.dispatchEvent(new Event('input'));});
+  await page.locator('main').evaluate(el=>{el.scrollLeft=0;el.scrollTop=0;});
+  const area=await page.locator('main').boundingBox();
+  await expect(page.locator('main')).toHaveCSS('touch-action','none');
+  await expect(page.locator('main')).toHaveCSS('user-select','none');
+  const before=await page.locator('main').evaluate(el=>el.scrollTop);
+  const event=(id,y)=>({pointerType:'touch',pointerId:id,isPrimary:id===1,clientX:2,clientY:area.y+y,bubbles:true});
+  await page.locator('main').dispatchEvent('pointerdown',event(1,500));
+  await page.locator('main').dispatchEvent('pointermove',event(1,470));
+  expect(await page.locator('main').evaluate(el=>el.scrollTop)).toBeGreaterThan(before);
+  await page.locator('main').dispatchEvent('pointerdown',event(2,600));
+  expect(await page.evaluate(()=>window.__editorState.touchGestureActive)).toBe(true);
+  await page.evaluate(()=>{
+    for(const pointerId of [1,2])window.dispatchEvent(new PointerEvent('pointercancel',{pointerType:'touch',pointerId}));
+  });
+  expect(await page.evaluate(()=>({active:window.__editorState.touchGestureActive,suppressed:window.__editorState.touchGestureSuppressEditor,selection:window.__editorState.selectionRect})))
+    .toEqual({active:false,suppressed:false,selection:null});
+  expect((await project(page)).objects).toEqual([]);
+});
+
 test('a cancelled pointer cannot leave an unfinished path blocking the next placement',async({page})=>{
   await choose(page,'run');
   const p=await at(page,200,220);await page.mouse.move(p.x,p.y);await page.mouse.down();

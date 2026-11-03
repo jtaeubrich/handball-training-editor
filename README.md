@@ -186,7 +186,9 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v100)
+## Entwicklung und Regressionstests (v101)
+
+Auf Smartphones funktioniert der Zweifinger-Zoom im gesamten Zeichenbereich, einschließlich der grauen Ränder und der freien Fläche unter einem verkleinerten Canvas. Ein Finger auf dem Hintergrund verschiebt die Ansicht; auf dem Canvas bleibt Zeichnen und Auswählen erhalten. Ein zweiter Finger hebt einen bereits begonnenen Zeichenschritt auf und steuert ausschließlich die Ansicht, bis beide Finger losgelassen sind.
 
 Die KI kann mit `label_offset` den Beschriftungsversatz von Angreifern, Abwehrspielern und Wegen setzen, z. B. „Beschriftung von Spieler 2 um 30 Pixel nach oben“. Der aktuelle Versatz wird mit dem Skizzenzustand übertragen. Der Befehl setzt absolute ganzzahlige X-/Y-Werte von −50 bis +50 Canvas-Pixeln, wie die manuelle Oberfläche. Rückgängig, lokale Sicherung und Export bleiben erhalten.
 

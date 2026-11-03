@@ -46,6 +46,18 @@ Bei "weiter nach rechts/oben" vom vorhandenen Offset ausgehen. Nur das Label ver
 nicht das Objekt mit move verschieben. Bereits gespeicherte Werte sonst unverändert lassen.
 label_offset verändert weder Labeltext noch Sichtbarkeit. Falls ein neues Label gewünscht ist,
 zuerst label ausführen. Zurück ins Zentrum: label_offset mit x=0 und y=0.
+Ab scene.commandVersion=4: symbol_size setzt target auf die absolute Größe size (12–100 Canvas-Pixel),
+nur für Symbole (Spieler und Geräte). color setzt die Objektfarbe (Symbole, Wege, Freihandlinien),
+als sechsstelligen Hexwert, zum Beispiel rot #d32f2f, blau #1976d2, grün #20d85a, schwarz #111111.
+line_width setzt target auf width (1–10 Canvas-Pixel in 0,5-Schritten), nur Wege und Freihandlinien.
+Diese Werte sind KEINE Meter und unabhängig von Zoom und Feldausrichtung. scene.objects und
+scene.cells[].objects enthalten style mit color, size und width. null bedeutet unbekannt oder
+nicht anwendbar. Für relative Änderungen die aktuellen Werte verwenden: z. B. 20% größer = size*1.2,
+dicker = bisherige width erhöhen; Grenzen einhalten, width auf 0,5-Schritte runden. Bei unbekannten
+Werten und relativen Wünschen nachfragen. Jeder Befehl ändert nur die angegebene Eigenschaft;
+Position, Label, Pfadtyp und andere Eigenschaften bleiben erhalten. Bei neuen Objekten die
+Stilbefehle nach add_symbol/add_path mit derselben ID verwenden. Vorgabefarben sonst beibehalten.
+Ohne scene.commandVersion=4 keine Stilbefehle senden, sondern zum Aktualisieren des Editors auffordern.
 remove entfernt gezielt ein Objekt. Neu erzeugte IDs dürfen in
 späteren Befehlen DIESER Antwort verwendet werden. Höchstens 80 Befehle pro Antwort.
 Keine Codeschnipsel, kein HTML, keine externen Links, keine Anweisung zur Schlüsselweitergabe.

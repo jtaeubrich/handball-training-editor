@@ -23,17 +23,37 @@
     const send = document.getElementById('aiChatSend');
     const cancel = document.getElementById('aiChatCancel');
     const reset = document.getElementById('aiChatReset');
+    const modelSelect = document.getElementById('aiChatModel');
+    const modelCost = document.getElementById('aiChatModelCost');
+    const catalog = global.HandballAiModels;
+    const modelKey = 'handballtrainer.aiModel.v1';
     const key = 'handballtrainer.aiEndpoint.v1';
     let messages = [], controller = null;
+    for (const model of catalog.models) {
+      const option=document.createElement('option'); option.value=model.id; option.textContent=`${model.tier} · ${model.name}`; modelSelect.append(option);
+    }
+    modelSelect.value=catalog.defaultModel;
+    try { const saved=localStorage.getItem(modelKey); if (catalog.find(saved)) modelSelect.value=saved; } catch (_) { /* Optional preference. */ }
+    function updateModelCost() {
+      const model=catalog.find(modelSelect.value) || catalog.models[0];
+      const price=value => value.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
+      modelCost.textContent=`Richtwerte je 1 Mio. Tokens: ${price(model.input)} $ Eingabe / ${price(model.output)} $ Ausgabe (Stand 03.11.2026).`;
+    }
+    updateModelCost();
+    modelSelect.addEventListener('change',() => {
+      if (!catalog.find(modelSelect.value)) modelSelect.value=catalog.defaultModel;
+      updateModelCost();
+      try { localStorage.setItem(modelKey,modelSelect.value); } catch (_) { /* Request still works. */ }
+    });
     try { endpoint.value = localStorage.getItem(key) || ''; } catch (_) { /* Optional preference. */ }
     if (!endpoint.value && ['localhost','127.0.0.1','[::1]'].includes(location.hostname)) endpoint.value = `${location.origin}/api/chat`;
     settings.open = !endpoint.value;
 
-    function addMessage(who,text) {
+    function addMessage(who,text,model) {
       const row = document.createElement('div');
       row.className = `ai-chat-message ai-chat-${who}`;
       const title = document.createElement('strong');
-      title.textContent = who === 'user' ? 'Du' : 'KI';
+      title.textContent = who === 'user' ? 'Du' : model ? `KI · ${model.name}` : 'KI';
       const body = document.createElement('p'); body.textContent = text;
       row.append(title,body); log.append(row); log.parentElement.scrollTop = log.parentElement.scrollHeight;
       return row;
@@ -42,6 +62,7 @@
       send.disabled = value; cancel.hidden = !value; reset.disabled = value;
       form.setAttribute('aria-busy',String(value));
       endpoint.disabled = value; access.disabled = value;
+      modelSelect.disabled = value;
     }
     function open() {
       deps.onOpen?.();
@@ -76,29 +97,31 @@
         if (text.length > 4000) throw new Error('Bitte die Nachricht auf 4.000 Zeichen kürzen.');
         if (!endpoint.value.trim()) { settings.open = true; throw new Error('Bitte zuerst die Adresse des KI-Dienstes eintragen.'); }
         const address = normalizeEndpoint(endpoint.value.trim());
+        const selectedModel=catalog.find(modelSelect.value);
+        if (!selectedModel) throw new Error('Bitte ein gültiges KI-Modell auswählen.');
         if (deps.isBusy()) throw new Error('Bitte zuerst den laufenden Zeichen- oder Bearbeitungsschritt abschließen.');
         const snapshot = deps.capture();
-        try { localStorage.setItem(key,address); } catch (_) { /* Request still works. */ }
+        try { localStorage.setItem(key,address); localStorage.setItem(modelKey,selectedModel.id); } catch (_) { /* Request still works. */ }
         const conversation = [...messages,{role:'user',content:text}].slice(-12);
         submittedText = text;
         controller = new AbortController(); setBusy(true);
         let timedOut = false;
         timer = setTimeout(() => { timedOut = true; controller?.abort(); },60000);
         addMessage('user',text); prompt.value = '';
-        status.textContent = 'KI bearbeitet deine Nachricht …';
+        status.textContent = `${selectedModel.name} bearbeitet deine Nachricht …`;
         let response;
         try {
           response = await fetch(address,{
             method:'POST',credentials:'omit',cache:'no-store',redirect:'error',
             headers:{'Content-Type':'application/json',...(access.value ? {Authorization:`Bearer ${access.value}`} : {})},
-            body:JSON.stringify({messages:conversation,scene:snapshot.scene}),signal:controller.signal
+            body:JSON.stringify({messages:conversation,scene:snapshot.scene,model:selectedModel.id}),signal:controller.signal
           });
         } catch (error) {
           if (error.name === 'AbortError') throw new Error(timedOut ? 'Der KI-Dienst hat zu lange gebraucht. Die Skizze bleibt unverändert.' : 'Anfrage abgebrochen. Die Skizze bleibt unverändert.');
           throw new Error('KI-Dienst nicht erreichbar. Bitte Adresse und Verbindung prüfen.');
         }
         if (!response.ok) {
-          const errors = {401:'Der Zugangscode ist ungültig.',403:'Dieser Editor ist beim KI-Dienst nicht freigeschaltet.',429:'Zu viele Anfragen. Bitte kurz warten.',503:'Der KI-Dienst ist noch nicht eingerichtet.',504:'Der KI-Dienst hat zu lange gebraucht.'};
+          const errors = {401:'Der Zugangscode ist ungültig.',403:'Dieser Editor ist beim KI-Dienst nicht freigeschaltet.',422:'Das gewählte Modell ist nicht verfügbar oder für dieses API-Konto nicht freigeschaltet. Bitte ein anderes Modell wählen.',429:'Zu viele Anfragen. Bitte kurz warten.',503:'Der KI-Dienst ist noch nicht eingerichtet.',504:'Der KI-Dienst hat zu lange gebraucht.'};
           throw new Error(errors[response.status] || 'Der KI-Dienst konnte die Anfrage nicht bearbeiten.');
         }
         const raw = await response.text();
@@ -109,7 +132,7 @@
           if (deps.isBusy() || deps.signature() !== snapshot.signature) throw new Error('Die Skizze wurde inzwischen verändert. Bitte die Anweisung erneut senden; die KI-Änderungen wurden nicht übernommen.');
           applied=deps.apply(snapshot,reply);
         }
-        const row=addMessage('assistant',reply.message);
+        const row=addMessage('assistant',reply.message,selectedModel);
         if (applied?.action) {
           const labels={save:'Projekt jetzt speichern',load:'Projektdatei auswählen',export_svg:'SVG jetzt speichern',export_png:'PNG jetzt speichern'};
           const button=document.createElement('button');button.type='button';button.className='ai-chat-file-action';

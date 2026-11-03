@@ -6,13 +6,13 @@ Der Editor bleibt auf GitHub Pages. Dieser kleine Node-Dienst läuft separat und
 
 1. Node.js 24 installieren oder den Docker-Dienst verwenden.
 2. `server/.env.example` nach `server/.env` kopieren. Die Datei ist von Git ausgeschlossen.
-3. `OPENAI_API_KEY` und `OPENAI_MODEL` im Server setzen. Das Modell muss in deinem OpenAI-Projekt verfügbar sein und Responses API mit Structured Outputs unterstützen. Der Dienst wählt kein kostenpflichtiges Modell automatisch aus.
+3. `OPENAI_API_KEY` und `OPENAI_MODEL` im Server setzen. `OPENAI_MODEL` bleibt die Vorgabe für ältere Clients ohne Modellauswahl. Aktuelle Clients senden das gewählte Modell; zugelassen sind ausschließlich GPT-5.4 Mini, GPT-5.6 Sol und GPT-6 Astra. Die Modelle müssen im API-Projekt verfügbar sein. Es gibt keinen automatischen Modellwechsel bei Fehlern.
 4. Einen eigenen zufälligen `AI_CHAT_TOKEN` mit mindestens 24 Zeichen setzen, z. B. erzeugt mit `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Dies ist der Zugangscode zum Chat, kein OpenAI-Schlüssel.
 5. Unter `AI_ALLOWED_ORIGINS` die erlaubten Editor-Ursprünge eintragen, kommasepariert, ohne abschließenden Schrägstrich und ohne Repository-Pfad. Für dieses Repository: `https://jtaeubrich.github.io`.
 6. Lokal aus dem Repository starten: `node --env-file=server/.env server/server.cjs`. Mit `SERVE_EDITOR=true` ist der Editor unter `http://127.0.0.1:8787` erreichbar.
 7. Im Editor **KI-Chat → KI-Verbindung einrichten** öffnen, die Dienstadresse mit `/api/chat` und den Zugangscode eintragen. Der Code bleibt im Arbeitsspeicher der Seite und wird nach einem Neustart neu eingegeben. Die Dienstadresse wird lokal im Browser gemerkt.
 
-Der Chat sendet erst beim ausdrücklichen Absenden. Der Verlauf bleibt nur für die aktuelle Seite erhalten. **Neuer Chat** löscht den Verlauf, aber keine Zeichnung. Die übertragenen Skizzendaten enthalten ausschließlich das aktive Feld mit Objektpositionen und Labels; keine Projektdateinamen oder Objekte anderer Felder. Ohne OpenAI-Konfiguration und Zugangscode antwortet der Dienst mit 503 und ruft OpenAI nicht auf.
+Der Chat sendet erst beim ausdrücklichen Absenden. Der Verlauf bleibt nur für die aktuelle Seite erhalten. **Neuer Chat** löscht den Verlauf, aber keine Zeichnung. Die übertragenen Skizzendaten enthalten alle Storyboardfelder mit ihren Objekten und die globalen Zeichenvorgaben; keine Projektdateinamen oder Zugangsschlüssel. Ohne OpenAI-Konfiguration und Zugangscode antwortet der Dienst mit 503 und ruft OpenAI nicht auf.
 
 ## Cloud-Betrieb
 
@@ -26,7 +26,7 @@ Container hinter einem HTTPS-Reverse-Proxy oder auf einem Containerhost starten.
 docker run --rm --env-file server/.env -e HOST=0.0.0.0 -e SERVE_EDITOR=false -p 127.0.0.1:8787:8787 handball-ki
 ```
 
-Der Proxy leitet `/api/chat` an Port 8787 weiter. Gesundheitstest: `GET /health` liefert `{"ok":true,"commandVersion":5}`. Version 5 unterstützt zusätzlich zu Feldlayout, Feldausrichtung, Feldkopien und Beschriftungsversatz auch Symbolgröße, Objektfarbe, Linienstärke, Drehung, Objektkopien, Pfadbearbeitung, Typwechsel, Labeloptionen, Vorgaben und vorbereitete Dateiaktionen. Der Dienst selbst spricht HTTP; TLS übernimmt der Host/Proxy. Im Container werden Editor und Secrets nicht ausgeliefert. Die statische Auslieferung ist nur eine lokale Entwicklungshilfe.
+Der Proxy leitet `/api/chat` an Port 8787 weiter. Gesundheitstest: `GET /health` liefert `{"ok":true,"commandVersion":5,"modelSelectionVersion":1}`. Version 5 unterstützt zusätzlich zu Feldlayout, Feldausrichtung, Feldkopien und Beschriftungsversatz auch Symbolgröße, Objektfarbe, Linienstärke, Drehung, Objektkopien, Pfadbearbeitung, Typwechsel, Labeloptionen, Vorgaben und vorbereitete Dateiaktionen. Der Dienst selbst spricht HTTP; TLS übernimmt der Host/Proxy. Im Container werden Editor und Secrets nicht ausgeliefert. Die statische Auslieferung ist nur eine lokale Entwicklungshilfe.
 
 Der Zugangscode schützt die kostenpflichtige Schnittstelle und sollte nur an berechtigte Nutzer verteilt werden. Für eine größere öffentliche Nutzergruppe ist vor der Freigabe eine Nutzeranmeldung mit eigenen Kontingenten nötig. Der Dienst erlaubt derzeit insgesamt 20 Anfragen pro Minute und 2 parallele Anfragen **pro Prozess**. OpenAI-Aufrufe haben 45 Sekunden Zeit und höchstens 6.000 Ausgabe-Tokens. Den Verbrauch zusätzlich im OpenAI-Projekt überwachen. Mehrere Dienstinstanzen benötigen gemeinsame Limits; die aktuellen Zähler sind im Arbeitsspeicher.
 
@@ -58,6 +58,10 @@ Seit v104 (`commandVersion:5`) kommen folgende Befehle hinzu:
 - `project_action {action}`: `undo/redo` nur als alleiniger Befehl und nur bei verfügbarer Historie. `save/load/export_svg/export_png` müssen am Ende stehen. Sie bereiten im Chat einen Aktionsbutton vor; der Nutzer öffnet damit den Browser-Dateidialog. Es werden keine lokalen Pfade oder Dateiinhalte an das Modell übertragen. Nach zwischenzeitlichen Änderungen wird der Button als veraltet abgelehnt. Eine reine Dateiaktion erzeugt keinen Historieneintrag.
 
 Der Kontext enthält außerdem `editor:{defaults,canUndo,canRedo}` und pro Objekt `editing:{rotation,showLabel,labelSet}`. `label` enthält auch ausgeblendeten Text. Ältere Kontexte der Versionen 4 und ohne Versionsangabe bleiben gültig; die neuen Befehle erfordern Version 5. Felddarstellung, Zoom/Ausschnitt und neue Freihandzeichnungen werden nicht gesteuert. Der Client prüft vor der Übernahme auch Vorgaben und Historienzustand auf zwischenzeitliche Änderungen.
+
+Seit v105 akzeptiert `POST /api/chat` optional `model`. `js/ai-models.js` ist der gemeinsame Modellkatalog für Browser und Server. Nur `gpt-5.4-mini` (Günstig), `gpt-5.6-sol` (Mittel) und `gpt-6-astra` (Premium) werden akzeptiert. Unbekannte IDs werden vor einem OpenAI-Aufruf mit 400 abgelehnt. Ohne `model` bleibt `OPENAI_MODEL` aktiv. Mit expliziter Wahl führt eine fehlende Modellfreigabe (Upstream 403/404) zu 422; es wird weder erneut angefragt noch ein anderes Modell verwendet. API-Schlüssel und Abrechnung bleiben serverseitig unverändert.
+
+Die Auswahl steht über dem Chat-Eingabefeld, wird lokal unter `handballtrainer.aiModel.v1` gespeichert und während einer Anfrage gesperrt. GPT-5.4 Mini ist die Voreinstellung. Modellwechsel erhalten den laufenden Chat. Jede Antwort nennt das angefragte Modell. Standardpreis-Richtwerte je 1 Mio. Tokens (Eingabe/Ausgabe, USD, Stand 03.11.2026): [GPT-5.4 Mini](https://developers.openai.com/api/docs/models/gpt-5.4-mini) 0,75/4,50; [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol) 4/20; [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra) 10/50. Das sind keine Preise pro Skizze; Kontext, Ausgabe, Reasoning, Caching und spätere Preisänderungen beeinflussen die Kosten. GPT-5.6 Sol hat derzeit einen befristeten Aktionspreis. Mini verwendet `reasoning.effort=none`, Sol und Astra `low`, um den bestehenden Zeit- und Ausgaberahmen beizubehalten. Diese Auswahl ist keine Qualitätsmessung mit echten Modellaufrufen; Tests verwenden injizierte Antworten.
 
 ## Tests
 

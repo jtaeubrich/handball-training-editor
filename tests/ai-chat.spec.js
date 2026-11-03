@@ -34,7 +34,8 @@ test('a chat answer adds native objects as one undo step, persists and exports t
   await send(page);
   await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
   expect(request.scene).toMatchObject({mode:'half',width:20,height:20,objects:[]});
-  expect(Object.keys(request)).toEqual(['messages','scene']);
+  expect(Object.keys(request)).toEqual(['messages','scene','model']);
+  expect(request.model).toBe('gpt-5.4-mini');
   const created=await objects(page);
   expect(created).toHaveLength(3);
   expect(created[0]).toMatchObject({kind:'symbol',type:'attacker',attackFormation:'numbers',label:'1',showLabel:true});
@@ -303,9 +304,10 @@ test('browser reaches the separate service through real CORS and authenticated H
     await page.locator('#aiChatToggle').click();await page.locator('#aiChatSettings summary').click();
     await page.locator('#aiChatEndpoint').fill(`http://127.0.0.1:${server.address().port}/api/chat`);
     await page.locator('#aiChatAccess').fill(token);
+    await page.locator('#aiChatModel').selectOption('gpt-5.6-sol');
     await page.locator('#aiChatPrompt').fill('Zwei Spieler und ein Pass');await page.locator('#aiChatSend').click();
     await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
-    expect(await objects(page)).toHaveLength(3);expect(sent.model).toBe('test-model');
+    expect(await objects(page)).toHaveLength(3);expect(sent.model).toBe('gpt-5.6-sol');expect(sent.reasoning).toEqual({effort:'low'});
     expect((await objects(page))[0]).toMatchObject({labelOffsetX:20,labelOffsetY:-30,size:70,color:'#20d85a'});
     expect((await objects(page))[2]).toMatchObject({width:6,color:'#d32f2f'});
   } finally { await new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}); }
@@ -638,4 +640,55 @@ test('invalid extended batches preserve board, defaults and history atomically',
     expect(await board(page)).toEqual(before);expect(await defaults(page)).toEqual(previous);
   }
   await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
+});
+
+for(const [model,name,price] of [
+  ['gpt-5.4-mini','GPT-5.4 Mini','4,50'],['gpt-5.6-sol','GPT-5.6 Sol','20,00'],['gpt-6-astra','GPT-6 Astra','50,00']
+]) {
+  test(`${model}: selection persists, reaches the service and is shown on the answer`,async({page})=>{
+    let sent;
+    await page.route('**/api/chat',route=>{sent=route.request().postDataJSON();return route.fulfill({json:reply});});
+    await page.locator('#aiChatToggle').click();
+    await expect(page.locator('#aiChatModel option')).toHaveCount(3);
+    await page.locator('#aiChatModel').selectOption(model);
+    await expect(page.locator('#aiChatModelCost')).toContainText(price);
+    await page.reload();await page.locator('#aiChatToggle').click();
+    await expect(page.locator('#aiChatModel')).toHaveValue(model);
+    await page.locator('#aiChatPrompt').fill('Zwei Spieler und ein Pass');await page.locator('#aiChatSend').click();
+    await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+    expect(sent.model).toBe(model);
+    await expect(page.locator('.ai-chat-assistant strong').last()).toHaveText(`KI · ${name}`);
+    const created=await objects(page);expect(created).toHaveLength(3);
+    await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
+    await page.locator('#redoBtn').click();expect(await objects(page)).toEqual(created);
+    await page.locator('#aiChatToggle').click();await expect(page.locator('#aiChatModel')).toHaveValue(model);
+  });
+}
+
+test('mobile model choice is locked during a request; unavailable models do not trigger a fallback',async({page})=>{
+  await page.setViewportSize({width:320,height:740});
+  const calls=[];let release;
+  const wait=new Promise(resolve=>{release=resolve;});
+  await page.route('**/api/chat',async route=>{
+    calls.push(route.request().postDataJSON().model);await wait;await route.fulfill({status:422,json:{error:'Unavailable'}});
+  });
+  await page.locator('#aiChatToggle').click();
+  await page.locator('#aiChatModel').selectOption('gpt-6-astra');
+  const box=await page.locator('#aiChatModel').boundingBox();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(320);
+  await page.locator('#aiChatPrompt').fill('Spieler erstellen');await page.locator('#aiChatSend').click();
+  await expect(page.locator('#aiChatModel')).toBeDisabled();release();
+  await expect(page.locator('#aiChatStatus')).toContainText('nicht freigeschaltet');
+  await expect(page.locator('#aiChatModel')).toBeEnabled();await expect(page.locator('#aiChatModel')).toHaveValue('gpt-6-astra');
+  await expect(page.locator('#aiChatPrompt')).toHaveValue('Spieler erstellen');
+  expect(calls).toEqual(['gpt-6-astra']);expect(await objects(page)).toEqual([]);
+  await page.route('**/api/chat',route=>{calls.push(route.request().postDataJSON().model);return route.fulfill({json:reply});});
+  await page.locator('#aiChatModel').selectOption('gpt-5.4-mini');await page.locator('#aiChatSend').click();
+  await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');expect(calls).toEqual(['gpt-6-astra','gpt-5.4-mini']);
+});
+
+test('unknown stored model choices return to the inexpensive default without requesting AI',async({page})=>{
+  await page.evaluate(()=>localStorage.setItem('handballtrainer.aiModel.v1','unknown-premium-model'));
+  let calls=0;await page.route('**/api/chat',route=>{calls++;return route.fulfill({json:reply});});
+  await page.reload();await page.locator('#aiChatToggle').click();
+  await expect(page.locator('#aiChatModel')).toHaveValue('gpt-5.4-mini');expect(calls).toBe(0);
 });

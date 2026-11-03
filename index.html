@@ -996,7 +996,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v104</span>
+    <span>Einstellungen · v105</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1202,7 +1202,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v104</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v105</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1846,6 +1846,9 @@
   </div>
   <p id="aiChatStatus" class="ai-chat-status" role="status">Zum Beispiel: „Zwei nummerierte Angreifer auf neun Meter, mit einem Pass von 2 zu 1.“</p>
   <form id="aiChatForm">
+    <label for="aiChatModel">KI-Modell</label>
+    <select id="aiChatModel" aria-describedby="aiChatModelCost"></select>
+    <p id="aiChatModelCost" class="ai-chat-model-cost"></p>
     <label for="aiChatPrompt">Deine Anweisung</label>
     <textarea id="aiChatPrompt" rows="2" maxlength="4000" placeholder="Beschreibe deine Übung …"></textarea>
     <div class="ai-chat-actions">
@@ -1864,6 +1867,7 @@
 <script src="./js/geometry.js"></script>
 <script src="./js/object-model.js"></script>
 <script src="./js/ai-commands.js"></script>
+<script src="./js/ai-models.js"></script>
 <script src="./js/ai-chat.js"></script>
 <script src="./js/interactions.js"></script>
 <script src="./js/mobile.js"></script>
@@ -3968,7 +3972,7 @@
 
   function getProjectData() {
     return {
-      version: 104,
+      version: 105,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
@@ -4330,7 +4334,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v104 =====
+  // ===== PWA / Service Worker v105 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4341,7 +4345,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v104-reload';
+      const reloadKey = 'handballtrainer-sw-v105-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4360,7 +4364,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v104 registration OK');
+        console.info('[Handballtrainer] Service Worker v105 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

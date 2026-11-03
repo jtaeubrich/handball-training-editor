@@ -31,6 +31,7 @@ test('OpenAI adapter requests strict commands, supplies context, and disables re
     sent = JSON.parse(options.body);return upstream(validReply);
   }});
   assert.deepEqual(reply,validReply);assert.equal(sent.store,false);
+  assert.equal(sent.model,'test-model');
   assert.equal(sent.text.format.strict,true);assert.equal(sent.text.format.type,'json_schema');
   assert.deepEqual(sent.text.format.schema,protocol.replySchema);
   assert.ok(sent.instructions.includes('Halbfeld'));assert.equal(sent.input[0].content,body.messages[0].content);
@@ -57,7 +58,7 @@ test('preflight works only for configured origins and auth is mandatory',async t
 test('unconfigured services are inert and health does not expose configuration',async t=>{
   const s=await service(t,{env:{}});
   const response=await s.post();assert.equal(response.status,503);assert.equal(s.calls(),0);
-  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:5});
+  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:5,modelSelectionVersion:1});
 });
 
 test('static serving cannot disclose environment files, Git data or server sources',async t=>{
@@ -365,5 +366,45 @@ test('history actions are exclusive and require available history; file actions 
     assert.doesNotThrow(()=>protocol.validateReply(batch([{op:'project_action',action}]),editorScene));
     assert.throws(()=>protocol.validateReply(batch([{op:'project_action',action},validReply.commands[0]]),editorScene));
     assert.throws(()=>protocol.validateReply(batch([{op:'project_action',action},{op:'project_action',action}]),editorScene));
+  }
+});
+
+test('each selectable model is sent unchanged with supported reasoning and strict drawing commands',async()=>{
+  const catalog=require('../js/ai-models.js');
+  assert.deepEqual(catalog.models.map(m=>m.id),['gpt-5.4-mini','gpt-5.6-sol','gpt-6-astra']);
+  assert.equal(catalog.defaultModel,'gpt-5.4-mini');
+  for(const profile of catalog.models) {
+    let calls=0,sent;
+    const reply=await requestOpenAI({...body,model:profile.id},{apiKey:'fake',model:'legacy-model',fetchImpl:async(_url,options)=>{
+      calls++;sent=JSON.parse(options.body);return upstream(validReply);
+    }});
+    assert.equal(calls,1);assert.equal(sent.model,profile.id);
+    assert.deepEqual(sent.reasoning,{effort:profile.id==='gpt-5.4-mini'?'none':'low'});
+    assert.equal(sent.text.format.strict,true);assert.deepEqual(reply,validReply);
+  }
+});
+
+test('model selection uses the server allowlist and cannot supply credentials or arbitrary models',async t=>{
+  const seen=[];
+  const s=await service(t,{fetchImpl:async(_url,options)=>{seen.push(JSON.parse(options.body).model);return upstream(validReply);}});
+  for(const model of ['',null,42,{},['gpt-6-astra'],'__proto__','gpt-unknown','gpt-6-astra\n']) {
+    assert.equal((await s.post({...body,model})).status,400);
+  }
+  assert.equal((await s.post({...body,model:'gpt-6-astra',apiKey:'untrusted'})).status,400);
+  assert.deepEqual(seen,[]);
+  for(const model of ['gpt-5.4-mini','gpt-5.6-sol','gpt-6-astra']) assert.equal((await s.post({...body,model})).status,200);
+  assert.equal((await s.post(body)).status,200);
+  assert.deepEqual(seen,['gpt-5.4-mini','gpt-5.6-sol','gpt-6-astra','test-model']);
+});
+
+test('an unavailable selected model returns a clear error without retrying another model',async t=>{
+  for(const status of [403,404]) {
+    const seen=[];
+    const s=await service(t,{fetchImpl:async(_url,options)=>{
+      seen.push(JSON.parse(options.body).model);return new Response('private upstream details',{status});
+    }});
+    const response=await s.post({...body,model:'gpt-6-astra'});
+    assert.equal(response.status,422);assert.deepEqual(seen,['gpt-6-astra']);
+    assert.ok(!(await response.text()).includes('private'));
   }
 });

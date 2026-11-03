@@ -57,7 +57,7 @@ test('preflight works only for configured origins and auth is mandatory',async t
 test('unconfigured services are inert and health does not expose configuration',async t=>{
   const s=await service(t,{env:{}});
   const response=await s.post();assert.equal(response.status,503);assert.equal(s.calls(),0);
-  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:4});
+  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:5});
 });
 
 test('static serving cannot disclose environment files, Git data or server sources',async t=>{
@@ -294,5 +294,76 @@ test('style context accepts existing and legacy values but rejects malformed sty
     {color:'#1976d2',size:50,width:-1},{color:'#1976d2',size:NaN,width:2.5},
     {color:'#1976d2',size:50,width:Infinity},{color:'#1976d2',size:'50',width:2.5}]) {
     assert.throws(()=>validateRequest({...body,scene:{...styledScene,objects:[{...object,style}]}}));
+  }
+});
+
+const editorScene={...scene,commandVersion:5,editor:{defaults:{symbolSize:50,strokeWidth:2.5,strokeColor:'#111111',markerColor:'#f2c500'},canUndo:true,canRedo:true}};
+test('extended editor commands are strict and supported by the OpenAI adapter',async()=>{
+  const reply={message:'Spieler und Weg angepasst, Export vorbereitet.',commands:[
+    validReply.commands[0],{op:'rotate',target:'new1',angle:90},
+    {op:'copy_object',source:'new1',id:'copy1',x:12,y:9},
+    {op:'symbol_type',target:'copy1',type:'defender'},
+    {op:'label_options',target:'copy1',visible:false,set:'60',label:'IL'},
+    {op:'rotate_group',targets:['new1','copy1'],angle:90,center:{x:10,y:10}},
+    {op:'add_path',id:'path1',type:'pass',points:[{x:8,y:9},{x:12,y:9}]},
+    {op:'edit_path',target:'path1',type:'complexRun',points:[{x:8,y:9},{x:8,y:8},{x:11,y:8},{x:12,y:9}]},
+    {op:'defaults',symbolSize:60,strokeWidth:3,strokeColor:'#123456',markerColor:null},
+    {op:'project_action',action:'export_svg'}
+  ]};
+  const result=await requestOpenAI({...body,scene:editorScene},{apiKey:'fake',model:'test',fetchImpl:async(_url,options)=>{
+    const request=JSON.parse(options.body);
+    for(const op of ['rotate','rotate_group','copy_object','symbol_type','edit_path','label_options','defaults','project_action']) {
+      const schema=request.text.format.schema.properties.commands.items.anyOf.find(s=>s.properties.op.enum[0]===op);
+      assert.ok(schema);assert.equal(schema.additionalProperties,false);assert.deepEqual(schema.required,Object.keys(schema.properties));assert.ok(request.instructions.includes(op));
+    }
+    return upstream(reply);
+  }});
+  assert.deepEqual(result,reply);
+});
+
+test('extended commands reject wrong types, invalid label sets, duplicate IDs and unsupported versions',()=>{
+  const symbol=validReply.commands[0],path={op:'add_path',id:'path1',type:'pass',points:[{x:8,y:9},{x:12,y:9}]};
+  const batch=commands=>({message:'Bearbeiten.',commands});
+  const invalid=[
+    {op:'rotate',target:'new1',angle:360},{op:'rotate',target:'path1',angle:90},{op:'rotate',target:'new1',angle:1.5},
+    {op:'rotate_group',targets:['new1','new1'],angle:90,center:{x:10,y:10}},
+    {op:'rotate_group',targets:[],angle:90,center:{x:10,y:10}},
+    {op:'rotate_group',targets:['new1'],angle:361,center:{x:10,y:10}},
+    {op:'rotate_group',targets:['new1'],angle:90,center:{x:21,y:10}},
+    {op:'copy_object',source:'new1',id:'new1',x:10,y:10},{op:'copy_object',source:'missing',id:'copy',x:10,y:10},
+    {op:'symbol_type',target:'path1',type:'attacker'},{op:'symbol_type',target:'new1',type:'unknown'},
+    {op:'edit_path',target:'new1',type:'pass',points:path.points},
+    {op:'edit_path',target:'path1',type:'passCurve',points:path.points},
+    {op:'edit_path',target:'path1',type:'freehand',points:path.points},
+    {op:'label_options',target:'new1',visible:false,set:'60',label:null},
+    {op:'label_options',target:'new1',visible:false,set:'33',label:'IL'},
+    {op:'label_options',target:'new1',visible:false,set:'keep',label:'1'},
+    {op:'label_options',target:'path1',visible:true,set:'numbers',label:'1'},
+    {op:'defaults',symbolSize:null,strokeWidth:null,strokeColor:null,markerColor:null},
+    {op:'defaults',symbolSize:101,strokeWidth:null,strokeColor:null,markerColor:null},
+    {op:'defaults',symbolSize:null,strokeWidth:2.25,strokeColor:null,markerColor:null},
+    {op:'defaults',symbolSize:null,strokeWidth:null,strokeColor:'red',markerColor:null},
+    {op:'project_action',action:'shell'}
+  ];
+  invalid.forEach(c=>assert.throws(()=>protocol.validateReply(batch([symbol,path,c]),editorScene)));
+  const valid={op:'copy_object',source:'new1',id:'copy1',x:12,y:10};
+  assert.throws(()=>protocol.validateReply(batch([symbol,valid]),styledScene));
+  assert.throws(()=>protocol.validateReply(batch([symbol,{op:'symbol_type',target:'new1',type:'ball'},{op:'rotate',target:'new1',angle:90}]),editorScene));
+  assert.throws(()=>protocol.validateReply(batch([symbol,{op:'remove',target:'new1'},valid]),editorScene));
+  assert.doesNotThrow(()=>protocol.validateReply(batch([symbol,{op:'symbol_type',target:'new1',type:'defender'},
+    {op:'label_options',target:'new1',visible:true,set:'60',label:'IL'}]),editorScene));
+});
+
+test('history actions are exclusive and require available history; file actions are final',()=>{
+  const batch=commands=>({message:'Aktion.',commands});
+  for(const action of ['undo','redo']) {
+    assert.doesNotThrow(()=>protocol.validateReply(batch([{op:'project_action',action}]),editorScene));
+    assert.throws(()=>protocol.validateReply(batch([validReply.commands[0],{op:'project_action',action}]),editorScene));
+    assert.throws(()=>protocol.validateReply(batch([{op:'project_action',action}]),{...editorScene,editor:{...editorScene.editor,canUndo:false,canRedo:false}}));
+  }
+  for(const action of ['save','load','export_svg','export_png']) {
+    assert.doesNotThrow(()=>protocol.validateReply(batch([{op:'project_action',action}]),editorScene));
+    assert.throws(()=>protocol.validateReply(batch([{op:'project_action',action},validReply.commands[0]]),editorScene));
+    assert.throws(()=>protocol.validateReply(batch([{op:'project_action',action},{op:'project_action',action}]),editorScene));
   }
 });

@@ -231,11 +231,11 @@
     return symbol;
   }
 
-  function createPath(type, p, {width}) {
+  function createPath(type, p, {width,color='#111111'}) {
     const object = {
       kind:'path', type,
       x1:p.x, y1:p.y, x2:p.x, y2:p.y,
-      color:'#111111', width,
+      color, width,
       showLabel:false, label:'A', labelOffsetX:0, labelOffsetY:0
     };
     if (isMultiPointPath(type)) {

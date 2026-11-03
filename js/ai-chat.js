@@ -36,6 +36,7 @@
       title.textContent = who === 'user' ? 'Du' : 'KI';
       const body = document.createElement('p'); body.textContent = text;
       row.append(title,body); log.append(row); log.parentElement.scrollTop = log.parentElement.scrollHeight;
+      return row;
     }
     function setBusy(value) {
       send.disabled = value; cancel.hidden = !value; reset.disabled = value;
@@ -103,13 +104,29 @@
         const raw = await response.text();
         if (raw.length > 100000) throw new Error('Die KI-Antwort ist zu groß. Bitte eine kleinere Änderung anfordern.');
         const reply = global.HandballAiCommands.validateReply(JSON.parse(raw),snapshot.scene);
+        let applied;
         if (reply.commands.length) {
           if (deps.isBusy() || deps.signature() !== snapshot.signature) throw new Error('Die Skizze wurde inzwischen verändert. Bitte die Anweisung erneut senden; die KI-Änderungen wurden nicht übernommen.');
-          deps.apply(snapshot,reply);
+          applied=deps.apply(snapshot,reply);
         }
-        addMessage('assistant',reply.message);
+        const row=addMessage('assistant',reply.message);
+        if (applied?.action) {
+          const labels={save:'Projekt jetzt speichern',load:'Projektdatei auswählen',export_svg:'SVG jetzt speichern',export_png:'PNG jetzt speichern'};
+          const button=document.createElement('button');button.type='button';button.className='ai-chat-file-action';
+          button.textContent=labels[applied.action];
+          const signature=deps.signature();
+          button.addEventListener('click',async()=>{
+            if (controller || deps.isBusy()) { status.textContent='Bitte zuerst den laufenden Bearbeitungsschritt abschließen.'; return; }
+            if (signature !== deps.signature()) { button.disabled=true;status.textContent='Die Skizze wurde inzwischen verändert. Bitte die Dateiaktion erneut anfordern.';return; }
+            button.disabled=true;
+            try { status.textContent=await deps.performAction(applied.action); }
+            catch(error) { status.textContent=error.message; }
+            finally { button.disabled=false; }
+          });
+          row.append(button);
+        }
         messages = [...conversation,{role:'assistant',content:reply.message}].slice(-12);
-        status.textContent = reply.commands.length ? 'Skizze aktualisiert. Mit Rückgängig kannst du den KI-Schritt zurücknehmen.' : 'Die KI hat geantwortet. Die Skizze bleibt unverändert.';
+        status.textContent = applied?.status || (applied?.action ? 'Dateiaktion vorbereitet. Zum Öffnen des Dateidialogs bitte den Button in der Antwort verwenden.' : reply.commands.length ? 'Skizze aktualisiert. Mit Rückgängig kannst du den KI-Schritt zurücknehmen.' : 'Die KI hat geantwortet. Die Skizze bleibt unverändert.');
       } catch (error) {
         if (submittedText && !prompt.value) prompt.value = submittedText;
         status.textContent = error instanceof SyntaxError ? 'Der KI-Dienst hat eine ungültige Antwort geliefert. Die Skizze bleibt unverändert.' : error.message;

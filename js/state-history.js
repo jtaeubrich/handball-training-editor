@@ -16,6 +16,9 @@
     let redoStack = [];
 
     return {
+      refreshMetadata() {
+        if (captureMetadata) history[history.length-1] = {...history.at(-1),metadata:deepClone(captureMetadata())};
+      },
       commit(objects) {
         history.push(entry(objects));
         if (history.length > maxEntries) history.shift();

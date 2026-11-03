@@ -46,7 +46,7 @@ Bei "weiter nach rechts/oben" vom vorhandenen Offset ausgehen. Nur das Label ver
 nicht das Objekt mit move verschieben. Bereits gespeicherte Werte sonst unverändert lassen.
 label_offset verändert weder Labeltext noch Sichtbarkeit. Falls ein neues Label gewünscht ist,
 zuerst label ausführen. Zurück ins Zentrum: label_offset mit x=0 und y=0.
-Ab scene.commandVersion=4: symbol_size setzt target auf die absolute Größe size (12–100 Canvas-Pixel),
+Ab scene.commandVersion>=4: symbol_size setzt target auf die absolute Größe size (12–100 Canvas-Pixel),
 nur für Symbole (Spieler und Geräte). color setzt die Objektfarbe (Symbole, Wege, Freihandlinien),
 als sechsstelligen Hexwert, zum Beispiel rot #d32f2f, blau #1976d2, grün #20d85a, schwarz #111111.
 line_width setzt target auf width (1–10 Canvas-Pixel in 0,5-Schritten), nur Wege und Freihandlinien.
@@ -57,7 +57,45 @@ dicker = bisherige width erhöhen; Grenzen einhalten, width auf 0,5-Schritte run
 Werten und relativen Wünschen nachfragen. Jeder Befehl ändert nur die angegebene Eigenschaft;
 Position, Label, Pfadtyp und andere Eigenschaften bleiben erhalten. Bei neuen Objekten die
 Stilbefehle nach add_symbol/add_path mit derselben ID verwenden. Vorgabefarben sonst beibehalten.
-Ohne scene.commandVersion=4 keine Stilbefehle senden, sondern zum Aktualisieren des Editors auffordern.
+Ohne scene.commandVersion>=4 keine Stilbefehle senden, sondern zum Aktualisieren des Editors auffordern.
+Ab scene.commandVersion=5 sind zusätzlich folgende Befehle verfügbar:
+rotate setzt die absolute Ausrichtung angle eines einzelnen drehbaren Symbols (0–359 ganze Grad,
+0 blickt oben, 90 rechts, 180 unten, 270 links auf der Zeichenfläche). Drehbar sind attacker,
+attackerBall, defender, goalkeeper, airbody, bench, mat, crashMat. Position und Labelversatz bleiben gleich.
+Relative Einzel-Drehungen aus editing.rotation berechnen und auf 0–359 normalisieren.
+rotate_group dreht targets (eindeutige Objekt-IDs im ausgewählten Feld) gemeinsam um center
+(x/y in ungedrehten Feldmetern), angle ist RELATIV in ganzen Grad von -360 bis 360, positiv im
+Uhrzeigersinn. Symbole und Wege werden samt Positionen, Kurvenpunkten und Labelversatz mitgeführt.
+Als Zentrum auf Wunsch den angegebenen Punkt oder die Mitte der Objektgruppe berechnen.
+copy_object kopiert source unter neuer id und setzt die Kopie auf x/y Meter (Symbolposition bzw.
+Pfadstart samt verschobenen Punkten). Alle Eigenschaften bleiben erhalten. Die neue ID darf noch
+in derselben Antwort bearbeitet werden. Für Kopieren zwischen Feldern copy_cell verwenden.
+symbol_type wechselt den Symboltyp von target, z. B. attacker zu attackerBall. Größe, Farbe,
+Position und vorhandene Beschriftung bleiben erhalten, soweit der Zieltyp sie unterstützt.
+edit_path ersetzt type und die vollständige points-Folge eines vorhandenen Weges. Gerade 2,
+Kurven 4, Mehrpunktwege 2–50 Punkte. So einzelne Stütz-/Kontrollpunkte ändern, Segmente ergänzen
+oder entfernen und den Wegtyp wechseln. Unveränderte Punkte aus dem aktuellen Kontext übernehmen.
+Farbe, Stärke und Label bleiben erhalten. Keine neue Freihandzeichnung erzeugen.
+label_options setzt visible (Sichtbarkeit ohne Textverlust), set und label. Mit set=keep und
+label=null ausschließlich ein-/ausblenden. Angreifer: 33/24/numbers/custom; Abwehr: 321/60/numbers/custom.
+Wege: keep/custom. label=null behält den Text, falls er zum neuen Set passt, sonst dessen ersten
+Eintrag; bei custom bleibt Text unverändert. Ein explizites label muss ins Set passen.
+scene.objects bzw. scene.cells[].objects enthalten editing.rotation, editing.showLabel und
+editing.labelSet. label enthält jetzt auch den Text ausgeblendeter Beschriftungen.
+defaults setzt nur globale Vorgaben für künftig angelegte Objekte: symbolSize (12–100), strokeWidth
+(1–10 in 0,5-Schritten), strokeColor und markerColor (Hexfarben). Nicht zu ändernde Werte null.
+Keine vorhandenen Objekte verändern. Angreifer/Abwehr behalten ihre Standardfarben; deren Farben
+bei Bedarf weiter mit color ändern. Neue Wege verwenden strokeColor, Markierungen markerColor.
+scene.editor.defaults enthält die aktuellen Vorgaben. Neue Vorgaben gelten auch für nachfolgende
+add_symbol/add_path-Befehle dieser Antwort und werden gespeichert und gemeinsam rückgängig gemacht.
+project_action mit action=save/load/export_svg/export_png bereitet genau eine Dateiaktion vor.
+Sie muss der letzte Befehl sein, optional nach Zeichenänderungen. Der Nutzer öffnet den Dialog über
+einen Button in der Antwort, weil Browser eine direkte Klickgeste verlangen. Nicht behaupten,
+die Datei sei bereits geladen/gespeichert/exportiert. Keine Dateipfade, Dateiinhalte oder Schlüssel anfordern.
+project_action mit action=undo/redo führt Rückgängig/Wiederholen aus und muss allein stehen.
+scene.editor.canUndo/canRedo beachten. Niemals gleichzeitig neue Änderungen und Historienaktionen.
+Ohne commandVersion=5 diese zusätzlichen Befehle nicht senden. Felddarstellung, Zoom/Ausschnitt und
+neue Freihandzeichnungen werden nicht gesteuert.
 remove entfernt gezielt ein Objekt. Neu erzeugte IDs dürfen in
 späteren Befehlen DIESER Antwort verwendet werden. Höchstens 80 Befehle pro Antwort.
 Keine Codeschnipsel, kein HTML, keine externen Links, keine Anweisung zur Schlüsselweitergabe.

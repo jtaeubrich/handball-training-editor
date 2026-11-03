@@ -13,6 +13,9 @@
   const labelSchema = {type:'string',maxLength:24};
   const labelOffsetSchema = {type:'integer',minimum:-50,maximum:50};
   const cellSchema = {type:'integer',minimum:1,maximum:8};
+  const colorSchema = {type:'string',pattern:'^#[0-9a-fA-F]{6}$',minLength:7,maxLength:7};
+  const sizeSchema = {type:'number',minimum:12,maximum:100};
+  const widthSchema = {type:'number',minimum:1,maximum:10,multipleOf:0.5};
   function operation(op, properties) {
     const fields = {op:{type:'string',enum:[op]},...properties};
     return {type:'object',properties:fields,required:Object.keys(fields),additionalProperties:false};
@@ -31,6 +34,9 @@
         operation('move',{target:identifier,x:{type:'number'},y:{type:'number'}}),
         operation('label',{target:identifier,label:labelSchema}),
         operation('label_offset',{target:identifier,x:labelOffsetSchema,y:labelOffsetSchema}),
+        operation('symbol_size',{target:identifier,size:sizeSchema}),
+        operation('color',{target:identifier,color:colorSchema}),
+        operation('line_width',{target:identifier,width:widthSchema}),
         operation('remove',{target:identifier})
       ]}}
     }
@@ -46,6 +52,15 @@
   function labelOffset(value) {
     if (!Number.isInteger(value) || value < -50 || value > 50) fail('Der Beschriftungsversatz muss eine ganze Zahl zwischen -50 und +50 Pixeln sein.');
   }
+  function color(value) {
+    if (typeof value !== 'string' || value.length !== 7 || !/^#[0-9a-fA-F]{6}$/.test(value)) fail('Farben müssen als sechsstelliger Hex-Farbwert angegeben werden, zum Beispiel #1976d2.');
+  }
+  function size(value) {
+    if (!Number.isFinite(value) || value < 12 || value > 100) fail('Die Symbolgröße muss zwischen 12 und 100 Pixeln liegen.');
+  }
+  function lineWidth(value) {
+    if (!Number.isFinite(value) || value < 1 || value > 10 || !Number.isInteger(value*2)) fail('Die Linienstärke muss zwischen 1 und 10 Pixeln liegen, in Schritten von 0,5.');
+  }
   function supportsLabel(object) {
     return object.kind === 'symbol' && ['attacker','attackerBall','defender'].includes(object.type) ||
       object.kind === 'path' && pathTypes.includes(object.type);
@@ -57,7 +72,9 @@
 
   function validateContext(scene, nested=false) {
     const storyboard = Object.hasOwn(scene,'cells') || Object.hasOwn(scene,'layout');
-    exact(scene,['cell','mode','rotation','width','height','objects',...(storyboard ? ['layout','cells'] : [])]);
+    const versioned = Object.hasOwn(scene,'commandVersion');
+    exact(scene,['cell','mode','rotation','width','height','objects',...(versioned ? ['commandVersion'] : []),...(storyboard ? ['layout','cells'] : [])]);
+    if (versioned && scene.commandVersion !== 4) fail('Unbekannte Version des Skizzenkontexts.');
     if (storyboard) {
       if (nested) fail('Verschachtelte Felder sind ungültig.');
       exact(scene.layout,['cols','rows']);
@@ -73,16 +90,24 @@
         }
       });
       const activeCell = scene.cells[scene.cell-1];
-      if (!activeCell || ['cell','mode','rotation','width','height','objects'].some(k => JSON.stringify(activeCell[k]) !== JSON.stringify(scene[k]))) fail('Das aktive Feld stimmt nicht überein.');
+      if (!activeCell || ['cell','mode','rotation','width','height','objects','commandVersion'].some(k => JSON.stringify(activeCell[k]) !== JSON.stringify(scene[k]))) fail('Das aktive Feld stimmt nicht überein.');
     }
     if (!Number.isInteger(scene.cell) || scene.cell < 1 || scene.cell > 8 || !['half','full','none'].includes(scene.mode) || ![0,90,180,270].includes(scene.rotation) || scene.width !== (scene.mode === 'full' ? 40 : 20) || scene.height !== 20 || !Array.isArray(scene.objects) || scene.objects.length > 1200) fail('Ungültiger Skizzenkontext.');
     const ids = new Set();
     for (const object of scene.objects) {
       // v99 clients omit offsets. Accept those contexts during the server rollout.
       const hasOffsets = Object.hasOwn(object,'labelOffsetX') || Object.hasOwn(object,'labelOffsetY');
-      exact(object,['id','kind','type','label','x','y','points',...(hasOffsets ? ['labelOffsetX','labelOffsetY'] : [])]);
+      const hasStyle = Object.hasOwn(object,'style');
+      exact(object,['id','kind','type','label','x','y','points',...(hasOffsets ? ['labelOffsetX','labelOffsetY'] : []),...(hasStyle ? ['style'] : [])]);
       id(object.id); label(object.label);
       if (hasOffsets) { labelOffset(object.labelOffsetX); labelOffset(object.labelOffsetY); }
+      if (hasStyle) {
+        exact(object.style,['color','size','width']);
+        const s = object.style;
+        if (s.color !== null) color(s.color);
+        if (s.size !== null && (object.kind !== 'symbol' || !Number.isFinite(s.size) || s.size <= 0 || s.size > 10000)) fail('Ungültige Symbolgröße im Skizzenkontext.');
+        if (s.width !== null && (!Number.isFinite(s.width) || s.width <= 0 || s.width > 1000)) fail('Ungültige Linienstärke im Skizzenkontext.');
+      }
       if (ids.has(object.id) || !['symbol','path','freehand'].includes(object.kind) || !(symbolTypes.includes(object.type) || pathTypes.includes(object.type) || object.type === 'freehand') || !Number.isFinite(object.x) || !Number.isFinite(object.y) || Math.abs(object.x) > 1000 || Math.abs(object.y) > 1000 || !Array.isArray(object.points) || object.points.length > 200) fail('Ungültiges Objekt im Skizzenkontext.');
       ids.add(object.id);
       for (const p of object.points) {
@@ -147,8 +172,10 @@
         c.points.forEach(p => point(p,current));
         if (used.has(c.id)) fail('Eine Objektreferenz ist doppelt vergeben.');
         used.add(c.id); ids.set(c.id,{kind:'path',type:c.type,cell:active});
-      } else if (['move','label','label_offset','remove'].includes(c.op)) {
-        exact(c,c.op === 'move' || c.op === 'label_offset' ? ['op','target','x','y'] : c.op === 'label' ? ['op','target','label'] : ['op','target']);
+      } else if (['move','label','label_offset','symbol_size','color','line_width','remove'].includes(c.op)) {
+        const keys = {move:['x','y'],label:['label'],label_offset:['x','y'],symbol_size:['size'],color:['color'],line_width:['width'],remove:[]};
+        exact(c,['op','target',...keys[c.op]]);
+        if (['symbol_size','color','line_width'].includes(c.op) && scene.commandVersion !== 4) fail('Für Größen- und Farbbefehle bitte den Editor aktualisieren.');
         id(c.target);
         if (!ids.has(c.target)) fail('Die KI verweist auf ein nicht vorhandenes Objekt.');
         if (ids.get(c.target).cell !== active) fail('Vor der Objektänderung das betreffende Feld auswählen.');
@@ -157,6 +184,15 @@
         if (c.op === 'label_offset') {
           labelOffset(c.x); labelOffset(c.y);
           if (!supportsLabel(ids.get(c.target))) fail('Dieses Objekt unterstützt keinen Beschriftungsversatz.');
+        }
+        if (c.op === 'symbol_size') {
+          size(c.size);
+          if (ids.get(c.target).kind !== 'symbol') fail('Nur Symbole unterstützen eine Symbolgröße.');
+        }
+        if (c.op === 'color') color(c.color);
+        if (c.op === 'line_width') {
+          lineWidth(c.width);
+          if (!['path','freehand'].includes(ids.get(c.target).kind)) fail('Die Linienstärke kann nur für Wege und Freihandlinien geändert werden.');
         }
         if (c.op === 'remove') ids.delete(c.target);
       } else fail('Unbekannter Zeichenbefehl.');
@@ -200,9 +236,12 @@
       }
       const offset = value => Number.isFinite(value) ? Math.max(-50,Math.min(50,Math.round(value))) : 0;
       descriptions.push({id:objectId,kind:o.kind,type:o.type,label:o.showLabel && typeof o.label === 'string' ? o.label.slice(0,24) : '',...rounded(start),points:points.map(rounded),
-        labelOffsetX:offset(o.labelOffsetX),labelOffsetY:offset(o.labelOffsetY)});
+        labelOffsetX:offset(o.labelOffsetX),labelOffsetY:offset(o.labelOffsetY),
+        style:{color:typeof o.color === 'string' && o.color.length === 7 && /^#[0-9a-fA-F]{6}$/.test(o.color) ? o.color.toLowerCase() : null,
+          size:o.kind === 'symbol' && Number.isFinite(o.size) && o.size > 0 && o.size <= 10000 ? o.size : null,
+          width:Number.isFinite(o.width) && o.width > 0 && o.width <= 1000 ? o.width : null}});
     });
-    const scene = {cell:cell.index+1,mode:settings.mode,rotation:settings.rotation,width:settings.mode === 'full' ? 40 : 20,height:20,objects:descriptions};
+    const scene = {cell:cell.index+1,mode:settings.mode,rotation:settings.rotation,width:settings.mode === 'full' ? 40 : 20,height:20,objects:descriptions,commandVersion:4};
     validateContext(scene);
     return {scene,references,frame};
   }
@@ -237,6 +276,9 @@
         const o = refs.get(c.target);
         if (c.op === 'remove') { result.splice(result.indexOf(o),1); refs.delete(c.target); }
         else if (c.op === 'label') setLabel(o,c.label);
+        else if (c.op === 'symbol_size') o.size = c.size;
+        else if (c.op === 'color') o.color = c.color.toLowerCase();
+        else if (c.op === 'line_width') o.width = c.width;
         else if (c.op === 'label_offset') {
           o.labelOffsetX = c.x; o.labelOffsetY = c.y;
           model.ensureLabelOffset(o);

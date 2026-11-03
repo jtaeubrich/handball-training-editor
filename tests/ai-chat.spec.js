@@ -293,7 +293,9 @@ test('browser reaches the separate service through real CORS and authenticated H
     AI_ALLOWED_ORIGINS:'http://127.0.0.1:4173'
   },fetchImpl:async(_url,options)=>{
     sent=JSON.parse(options.body);
-    const response={...reply,commands:[...reply.commands,{op:'label_offset',target:'player1',x:20,y:-30}]};
+    const response={...reply,commands:[...reply.commands,{op:'label_offset',target:'player1',x:20,y:-30},
+      {op:'symbol_size',target:'player1',size:70},{op:'color',target:'player1',color:'#20d85a'},
+      {op:'line_width',target:'pass1',width:6},{op:'color',target:'pass1',color:'#d32f2f'}]};
     return new Response(JSON.stringify({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(response)}]}]}));
   }});
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -304,7 +306,8 @@ test('browser reaches the separate service through real CORS and authenticated H
     await page.locator('#aiChatPrompt').fill('Zwei Spieler und ein Pass');await page.locator('#aiChatSend').click();
     await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
     expect(await objects(page)).toHaveLength(3);expect(sent.model).toBe('test-model');
-    expect((await objects(page))[0]).toMatchObject({labelOffsetX:20,labelOffsetY:-30});
+    expect((await objects(page))[0]).toMatchObject({labelOffsetX:20,labelOffsetY:-30,size:70,color:'#20d85a'});
+    expect((await objects(page))[2]).toMatchObject({width:6,color:'#d32f2f'});
   } finally { await new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}); }
 });
 
@@ -371,4 +374,107 @@ test('an out-of-range offset rejects all preceding changes in the answer',async(
   await send(page);
   await expect(page.locator('#aiChatStatus')).toContainText('zwischen -50 und +50');
   expect(await objects(page)).toEqual([]);
+});
+
+for(const type of ['attacker','airbody','passCurve','freehand']) {
+  test(`${type}: AI styles are visible, sent on follow-up and survive undo, export and restart`,async({page})=>{
+    const symbol=['attacker','airbody'].includes(type);
+    if(type === 'freehand') {
+      await choose(page,'freehand');
+      const box=await page.locator('#c').boundingBox();
+      await page.mouse.move(box.x+300,box.y+300);await page.mouse.down();
+      await page.mouse.move(box.x+360,box.y+340,{steps:5});await page.mouse.up();
+      expect(await objects(page)).toHaveLength(1);
+    }
+    const creation=type==='freehand' ? [] : symbol
+      ? [{op:'add_symbol',id:'one',type,x:10,y:10,label:type==='attacker'?'1':''}]
+      : [{op:'add_path',id:'one',type,points:[{x:8,y:10},{x:8,y:8},{x:12,y:8},{x:12,y:10}]}];
+    const target=type==='freehand'?'object-0':'one';
+    let followUp,requests=0;
+    await page.route('**/api/chat',route=>{
+      const request=route.request().postDataJSON();
+      if(requests++ === 0) return route.fulfill({json:{message:'Stil gesetzt.',commands:[...creation,
+        {op:'color',target,color:'#345678'},symbol ? {op:'symbol_size',target,size:60} : {op:'line_width',target,width:4.5}]}});
+      followUp=request;
+      const style=request.scene.objects[0].style;
+      return route.fulfill({json:{message:'Stil angepasst.',commands:[{op:'color',target:'object-0',color:'#D32F2F'},
+        symbol ? {op:'symbol_size',target:'object-0',size:style.size*1.2} : {op:'line_width',target:'object-0',width:style.width+1}]}});
+    });
+    const svg=async()=>{
+      await page.evaluate(()=>{window.HandballExport.saveSvgText=async text=>{window.__svg=text;};});
+      await page.locator('#svgBtn').click();return page.evaluate(()=>window.__svg);
+    };
+    await send(page,'Objekt umfärben und größer oder dicker machen');
+    await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+    const before=(await objects(page))[0];
+    expect(before).toMatchObject(symbol ? {size:60,color:'#345678'} : {width:4.5,color:'#345678'});
+    await page.locator('#aiChatClose').click();
+    const oldSvg=await svg();expect(oldSvg).toContain('#345678');
+    const oldImage=await page.locator('#c').evaluate(c=>c.toDataURL());
+    await send(page,symbol?'20 % größer und rot':'Noch einen Pixel dicker und rot');
+    await expect(page.locator('#aiChatLog')).toContainText('Stil angepasst.');
+    expect(followUp.scene.commandVersion).toBe(4);
+    expect(followUp.scene.objects[0].style).toEqual({color:'#345678',size:symbol?60:null,width:symbol?before.width:4.5});
+    const after=(await objects(page))[0];
+    expect(after).toEqual({...before,color:'#d32f2f',...(symbol?{size:72}:{width:5.5})});
+    await page.locator('#aiChatClose').click();
+    const newSvg=await svg();expect(newSvg).toContain('#d32f2f');expect(newSvg).not.toEqual(oldSvg);
+    if(!symbol) expect(newSvg).toContain('stroke-width="5.5"');
+    expect(await page.locator('#c').evaluate((c,before)=>c.toDataURL()===before,oldImage)).toBe(false);
+    await page.locator('#undoBtn').click();expect((await objects(page))[0]).toEqual(before);
+    await page.locator('#redoBtn').click();expect((await objects(page))[0]).toEqual(after);
+    await page.reload();expect((await objects(page))[0]).toEqual(after);
+  });
+}
+
+test('all symbol types accept exact sizes and colors without changing labels or positions',async({page})=>{
+  const types=await page.evaluate(()=>window.HandballAiCommands.symbolTypes);
+  const commands=types.flatMap((type,i)=>[
+    {op:'add_symbol',id:`s${i}`,type,x:2+(i%5)*4,y:4+Math.floor(i/5)*5,label:['attacker','attackerBall','defender'].includes(type)?'1':''},
+    {op:'symbol_size',target:`s${i}`,size:i===0?12:i===1?100:65},
+    {op:'color',target:`s${i}`,color:'#123456'}
+  ]);
+  await respond(page,{message:'Alle Symbole gestaltet.',commands});await send(page);
+  await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const styled=await objects(page);expect(styled).toHaveLength(types.length);
+  styled.forEach((o,i)=>expect(o).toMatchObject({type:types[i],size:i===0?12:i===1?100:65,color:'#123456'}));
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
+  await page.locator('#redoBtn').click();expect(await objects(page)).toEqual(styled);
+});
+
+test('mobile styles target the selected field and copy with it',async({page})=>{
+  await page.setViewportSize({width:390,height:844});
+  await respond(page,{message:'Drei Felder gestaltet.',commands:[{op:'layout',cols:3,rows:1},...reply.commands,
+    {op:'copy_cell',source:1,target:2},{op:'select_cell',cell:2},
+    {op:'add_symbol',id:'defense',type:'defender',x:10,y:7,label:'3'},
+    {op:'color',target:'defense',color:'#20d85a'},{op:'symbol_size',target:'defense',size:75},
+    {op:'add_path',id:'route',type:'runMulti',points:[{x:9,y:10},{x:8,y:9},{x:10,y:8}]},
+    {op:'color',target:'route',color:'#1976d2'},{op:'line_width',target:'route',width:10},
+    {op:'copy_cell',source:2,target:3}]});
+  await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const styled=await board(page);expect(styled.objects).toHaveLength(13);
+  expect(styled.objects[0]).toMatchObject({size:50,color:'#1976d2'});
+  expect(styled.objects[6]).toMatchObject({type:'defender',size:75,color:'#20d85a'});
+  expect(styled.objects[7]).toMatchObject({type:'runMulti',width:10,color:'#1976d2'});
+  expect(styled.objects[11]).toMatchObject({size:75,color:'#20d85a'});
+  expect(styled.objects[12]).toMatchObject({width:10,color:'#1976d2'});
+  await page.locator('#aiChatClose').click();await page.locator('#mobileUndoBtn').click();expect(await objects(page)).toEqual([]);
+  await page.locator('#mobileRedoBtn').click();expect(await board(page)).toEqual(styled);
+});
+
+test('invalid style batches preserve the whole board and its undo history',async({page})=>{
+  await respond(page,reply);await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const before=await board(page);
+  for(const invalid of [
+    {op:'symbol_size',target:'object-0',size:101},
+    {op:'color',target:'object-0',color:'red'},
+    {op:'line_width',target:'object-2',width:2.25},
+    {op:'line_width',target:'object-0',width:4},
+    {op:'symbol_size',target:'object-2',size:60}
+  ]) {
+    await respond(page,{message:'Ungültig.',commands:[{op:'layout',cols:2,rows:1},{op:'color',target:'object-1',color:'#123456'},invalid]});
+    await page.locator('#aiChatPrompt').fill('Stil ändern');await page.locator('#aiChatSend').click();
+    await expect(page.locator('#aiChatSend')).toBeEnabled();expect(await board(page)).toEqual(before);
+  }
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
 });

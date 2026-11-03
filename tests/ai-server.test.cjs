@@ -57,7 +57,7 @@ test('preflight works only for configured origins and auth is mandatory',async t
 test('unconfigured services are inert and health does not expose configuration',async t=>{
   const s=await service(t,{env:{}});
   const response=await s.post();assert.equal(response.status,503);assert.equal(s.calls(),0);
-  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:3});
+  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:4});
 });
 
 test('static serving cannot disclose environment files, Git data or server sources',async t=>{
@@ -237,4 +237,62 @@ test('storyboard contexts reject duplicate IDs, mismatches and nested fields',()
     {...valid,cells:[first,{...scene,cell:1}]},
     {...valid,cells:[storyboard,{...scene,cell:2}]}
   ]) assert.throws(()=>validateRequest({...body,scene:invalid}));
+});
+
+const styledScene = {...scene,commandVersion:4};
+test('strict style commands pass through OpenAI with absolute pixel values',async()=>{
+  const reply={message:'Spieler größer und rot, Pass grün und dicker.',commands:[
+    validReply.commands[0],{op:'symbol_size',target:'new1',size:72},
+    {op:'color',target:'new1',color:'#D32F2F'},
+    {op:'add_path',id:'pass1',type:'pass',points:[{x:8,y:9},{x:12,y:9}]},
+    {op:'color',target:'pass1',color:'#20d85a'},{op:'line_width',target:'pass1',width:4.5}
+  ]};
+  const result=await requestOpenAI({...body,scene:styledScene},{apiKey:'fake',model:'test',fetchImpl:async(_url,options)=>{
+    const request=JSON.parse(options.body);
+    for(const op of ['symbol_size','color','line_width']) {
+      const schema=request.text.format.schema.properties.commands.items.anyOf.find(s=>s.properties.op.enum[0]===op);
+      assert.ok(schema);assert.equal(schema.additionalProperties,false);
+      assert.deepEqual(schema.required,Object.keys(schema.properties));assert.ok(request.instructions.includes(op));
+    }
+    return upstream(reply);
+  }});
+  assert.deepEqual(result,reply);
+});
+
+test('style validation rejects invalid values, wrong object kinds, fields and removed references',()=>{
+  const symbol=validReply.commands[0];
+  const path={op:'add_path',id:'path1',type:'pass',points:[{x:8,y:9},{x:12,y:9}]};
+  const batch=commands=>({message:'Stil ändern.',commands});
+  for(const command of [
+    ...[0,11.9,100.1,Infinity,NaN,'60',null].map(size=>({op:'symbol_size',target:'new1',size})),
+    ...['red','#fff','#12345678','#123456\n','url(https://example.com)','<script>','#GG0000',null].map(color=>({op:'color',target:'new1',color})),
+    ...[0,0.5,10.5,2.25,NaN,Infinity,'3',null].map(width=>({op:'line_width',target:'path1',width})),
+    {op:'symbol_size',target:'path1',size:60},{op:'line_width',target:'new1',width:3},
+    {op:'color',target:'missing',color:'#123456'},
+    {op:'symbol_size',target:'new1',size:60,scale:2},
+    {op:'color',target:'new1'},{op:'line_width',target:'path1'}
+  ]) assert.throws(()=>protocol.validateReply(batch([symbol,path,command]),styledScene));
+  for(const op of [{op:'symbol_size',target:'new1',size:60},{op:'color',target:'new1',color:'#123456'}]) {
+    assert.throws(()=>protocol.validateReply(batch([symbol,{op:'remove',target:'new1'},op]),styledScene));
+    assert.throws(()=>protocol.validateReply(batch([symbol,op]),scene));
+  }
+  const multi={...styledScene,layout:{cols:2,rows:1},cells:[styledScene,{...styledScene,cell:2}]};
+  assert.throws(()=>protocol.validateReply(batch([symbol,{op:'select_cell',cell:2},{op:'color',target:'new1',color:'#123456'}]),multi));
+  for(const size of [12,60.5,100]) assert.doesNotThrow(()=>protocol.validateReply(batch([symbol,{op:'symbol_size',target:'new1',size}]),styledScene));
+  for(const width of [1,2.5,10]) assert.doesNotThrow(()=>protocol.validateReply(batch([path,{op:'line_width',target:'path1',width}]),styledScene));
+  const freehand={id:'object-0',kind:'freehand',type:'freehand',label:'',x:5,y:5,points:[]};
+  assert.doesNotThrow(()=>protocol.validateReply(batch([{op:'color',target:'object-0',color:'#20d85a'},{op:'line_width',target:'object-0',width:10}]),{...styledScene,objects:[freehand]}));
+});
+
+test('style context accepts existing and legacy values but rejects malformed styles',()=>{
+  const object={id:'object-0',kind:'symbol',type:'attacker',label:'1',x:8,y:9,points:[]};
+  for(const style of [undefined,{color:'#1976d2',size:50,width:2.5},{color:null,size:null,width:null},{color:'#123456',size:150,width:15}]) {
+    const o=style === undefined ? object : {...object,style};
+    assert.doesNotThrow(()=>validateRequest({...body,scene:{...styledScene,objects:[o]}}));
+  }
+  for(const style of [null,{}, {color:'red',size:50,width:2.5},{color:'#1976d2',size:0,width:2.5},
+    {color:'#1976d2',size:50,width:-1},{color:'#1976d2',size:NaN,width:2.5},
+    {color:'#1976d2',size:50,width:Infinity},{color:'#1976d2',size:'50',width:2.5}]) {
+    assert.throws(()=>validateRequest({...body,scene:{...styledScene,objects:[{...object,style}]}}));
+  }
 });

@@ -1,7 +1,7 @@
 {
   "name": "handball-training-editor",
   "private": true,
-  "version": "0.103.0",
+  "version": "0.104.0",
   "scripts": {
     "start": "node server/server.cjs",
     "test:server": "node --test tests/ai-server.test.cjs",

@@ -24,6 +24,7 @@
 .ai-chat textarea { width:100%; resize:vertical; min-height:66px; max-height:160px; border:1px solid #94a3b8; border-radius:8px; padding:9px; margin:5px 0 8px; font:inherit; font-size:16px; }
 .ai-chat-actions { display:flex; gap:6px; flex-wrap:wrap; }
 .ai-chat-actions button { min-height:40px; }
+.ai-chat-file-action { margin-top:8px; min-height:44px; max-width:100%; white-space:normal; }
 .ai-chat .ai-chat-send { background:#185ba8; color:#fff; border-color:#185ba8; }
 .ai-chat .ai-chat-send:hover { background:#124b8c; }
 .ai-chat button:disabled { opacity:.55; cursor:wait; }

@@ -22,7 +22,7 @@ function createServer({env=process.env,fetchImpl=fetch}={}) {
     let pathname;
     try { pathname = new URL(req.url,'http://localhost').pathname; }
     catch (_) { reply(400,{error:'Ungültige Adresse.'}); return; }
-    if (pathname === '/health' && req.method === 'GET') { reply(200,{ok:true,commandVersion:4}); return; }
+    if (pathname === '/health' && req.method === 'GET') { reply(200,{ok:true,commandVersion:5}); return; }
 
     if (pathname === '/api/chat') {
       const origin = req.headers.origin;

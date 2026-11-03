@@ -301,7 +301,7 @@
           const now = performance.now();
 
           if (!editorState.drawing || editorState.drawing.type !== editorState.tool || !Array.isArray(editorState.drawing.points)) {
-            editorState.drawing = deps.objectModel.createPath(editorState.tool, p, {width:+deps.strokeWidth.value});
+            editorState.drawing = deps.objectModel.createPath(editorState.tool, p, {width:+deps.strokeWidth.value,color:deps.strokeColor.value});
 
             editorState.lastMultiPathClickTime = now;
             editorState.lastMultiPathClickPoint = {x:p.x,y:p.y};
@@ -338,7 +338,7 @@
         }
 
         if (deps.pathTools.has(editorState.tool)) {
-          editorState.drawing = deps.objectModel.createPath(editorState.tool, p, {width:+deps.strokeWidth.value});
+          editorState.drawing = deps.objectModel.createPath(editorState.tool, p, {width:+deps.strokeWidth.value,color:deps.strokeColor.value});
           return;
         }
 

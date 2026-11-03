@@ -413,7 +413,7 @@ for(const type of ['attacker','airbody','passCurve','freehand']) {
     const oldImage=await page.locator('#c').evaluate(c=>c.toDataURL());
     await send(page,symbol?'20 % größer und rot':'Noch einen Pixel dicker und rot');
     await expect(page.locator('#aiChatLog')).toContainText('Stil angepasst.');
-    expect(followUp.scene.commandVersion).toBe(4);
+    expect(followUp.scene.commandVersion).toBe(5);
     expect(followUp.scene.objects[0].style).toEqual({color:'#345678',size:symbol?60:null,width:symbol?before.width:4.5});
     const after=(await objects(page))[0];
     expect(after).toEqual({...before,color:'#d32f2f',...(symbol?{size:72}:{width:5.5})});
@@ -475,6 +475,167 @@ test('invalid style batches preserve the whole board and its undo history',async
     await respond(page,{message:'Ungültig.',commands:[{op:'layout',cols:2,rows:1},{op:'color',target:'object-1',color:'#123456'},invalid]});
     await page.locator('#aiChatPrompt').fill('Stil ändern');await page.locator('#aiChatSend').click();
     await expect(page.locator('#aiChatSend')).toBeEnabled();expect(await board(page)).toEqual(before);
+  }
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
+});
+
+test('AI rotates symbols and groups, copies objects and changes types without losing styles',async({page})=>{
+  await page.locator('#courtRotation').selectOption('90');
+  await respond(page,{message:'Ausgangsstellung.',commands:[
+    {op:'add_symbol',id:'one',type:'attacker',x:8,y:10,label:'1'},
+    {op:'color',target:'one',color:'#345678'},{op:'symbol_size',target:'one',size:65},
+    {op:'label_offset',target:'one',x:10,y:-20},
+    {op:'add_path',id:'curve',type:'passCurve',points:[{x:8,y:10},{x:8,y:8},{x:12,y:8},{x:12,y:10}]},
+    {op:'label',target:'curve',label:'A'},{op:'color',target:'curve',color:'#123456'}]});
+  await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const before=await board(page);
+  await nextReply(page,[{op:'rotate',target:'object-0',angle:90},
+    {op:'copy_object',source:'object-0',id:'copy',x:12,y:10},
+    {op:'symbol_type',target:'copy',type:'defender'},
+    {op:'label_options',target:'copy',visible:true,set:'60',label:'IL'},
+    {op:'label_options',target:'object-0',visible:false,set:'keep',label:null},
+    {op:'copy_object',source:'object-1',id:'curve-copy',x:14,y:12},
+    {op:'rotate_group',targets:['object-0','copy','object-1'],angle:90,center:{x:10,y:10}}]);
+  const after=await board(page);expect(after.objects).toHaveLength(4);
+  expect(after.objects[0]).toMatchObject({x:568,y:470,rotation:180,label:'1',showLabel:false,size:65,color:'#345678',labelOffsetX:20,labelOffsetY:10});
+  expect(after.objects[2]).toMatchObject({type:'defender',x:432,y:470,rotation:180,label:'IL',defenseFormation:'60',size:65,color:'#345678'});
+  expect(after.objects[3]).toMatchObject({type:'passCurve',x1:432,y1:606,color:'#123456',label:'A'});
+  expect(after.objects[1].cx1).toBeCloseTo(568);expect(after.objects[1].cy1).toBeCloseTo(538);
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await board(page)).toEqual(before);
+  await page.locator('#redoBtn').click();expect(await board(page)).toEqual(after);
+  await page.reload();expect(await board(page)).toEqual(after);
+});
+
+test('AI edits path points, adds and removes segments and changes path types in place',async({page})=>{
+  await respond(page,{message:'Weg angelegt.',commands:[
+    {op:'add_path',id:'way',type:'runMulti',points:[{x:8,y:10},{x:7,y:9},{x:9,y:7}]},
+    {op:'color',target:'way',color:'#123456'},{op:'line_width',target:'way',width:4.5},
+    {op:'label',target:'way',label:'Lauf'},{op:'label_offset',target:'way',x:10,y:-20}]});
+  await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const original=(await objects(page))[0];
+  const edits=[
+    {type:'runMulti',points:[{x:8,y:10},{x:6,y:9},{x:9,y:7},{x:10,y:5}]},
+    {type:'runMulti',points:[{x:8,y:10},{x:6,y:9},{x:9,y:7}]},
+    {type:'passCurve',points:[{x:8,y:10},{x:6,y:8},{x:10,y:6},{x:10,y:5}]},
+    {type:'shot',points:[{x:10,y:5},{x:10,y:0}]}
+  ];
+  for(const [i,edit] of edits.entries()) {
+    await nextReply(page,[{op:'edit_path',target:'object-0',...edit}],`Wegschritt ${i}.`);
+    const current=(await objects(page))[0];
+    expect(current).toMatchObject({color:original.color,width:original.width,label:original.label,showLabel:true,labelOffsetX:10,labelOffsetY:-20,type:edit.type});
+    if(edit.type==='runMulti') expect(current.points).toHaveLength(edit.points.length);
+    else expect(current.points).toBeUndefined();
+    if(edit.type==='shot') {expect(current.cx1).toBeUndefined();expect(current).toMatchObject({x1:500,y1:300,x2:500,y2:130});}
+  }
+  const after=await objects(page);await page.locator('#aiChatClose').click();
+  await page.locator('#undoBtn').click();expect((await objects(page))[0].type).toBe('passCurve');
+  await page.locator('#redoBtn').click();expect(await objects(page)).toEqual(after);
+  await page.reload();expect(await objects(page)).toEqual(after);
+});
+
+test('AI toggles labels without losing text and selects all supported player label sets',async({page})=>{
+  await respond(page,{message:'Spieler angelegt.',commands:[reply.commands[0],
+    {op:'add_symbol',id:'defense',type:'defender',x:12,y:8,label:'2'},
+    {op:'label_options',target:'player1',visible:false,set:'custom',label:'Lea'}]});
+  await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  let sent;
+  await page.route('**/api/chat',route=>{sent=route.request().postDataJSON();return route.fulfill({json:{message:'Wieder sichtbar.',commands:[
+    {op:'label_options',target:'object-0',visible:true,set:'keep',label:null}]}});});
+  await page.locator('#aiChatPrompt').fill('Label wieder zeigen');await page.locator('#aiChatSend').click();
+  await expect(page.locator('#aiChatLog')).toContainText('Wieder sichtbar.');
+  expect(sent.scene.objects[0]).toMatchObject({label:'Lea',editing:{showLabel:false,labelSet:'custom'}});
+  expect((await objects(page))[0]).toMatchObject({label:'Lea',showLabel:true,attackFormation:'custom'});
+  for(const [i,set,label] of [[0,'33','RM'],[0,'24','KR'],[0,'numbers','10'],[1,'321','VM'],[1,'60','IL'],[1,'numbers','9']]) {
+    await nextReply(page,[{op:'label_options',target:`object-${i}`,visible:true,set,label}],`Labelset ${i} ${set}.`);
+    expect((await objects(page))[i]).toMatchObject({label,showLabel:true,[i?'defenseFormation':'attackFormation']:set});
+  }
+  await page.reload();expect((await objects(page))[0]).toMatchObject({label:'10',attackFormation:'numbers'});
+  expect((await objects(page))[1]).toMatchObject({label:'9',defenseFormation:'numbers'});
+});
+
+const defaults=page=>page.evaluate(()=>({symbolSize:+document.querySelector('#symbolSize').value,strokeWidth:+document.querySelector('#strokeWidth').value,strokeColor:document.querySelector('#strokeColor').value,markerColor:window.__editorState.markerColor}));
+test('AI global defaults affect subsequent AI and manual objects, persist and undo together',async({page})=>{
+  await page.locator('#symbolSize').fill('55');
+  const original=await defaults(page);
+  await respond(page,{message:'Vorgaben geändert.',commands:[
+    {op:'defaults',symbolSize:70,strokeWidth:5,strokeColor:'#345678',markerColor:'#20d85a'},
+    {op:'add_symbol',id:'cone',type:'cone',x:8,y:10,label:''},
+    {op:'add_path',id:'run',type:'run',points:[{x:10,y:10},{x:12,y:8}]}]});
+  await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const changed={symbolSize:70,strokeWidth:5,strokeColor:'#345678',markerColor:'#20d85a'};
+  expect(await defaults(page)).toEqual(changed);
+  const created=await objects(page);expect(created[0]).toMatchObject({size:70,width:5,color:'#20d85a'});expect(created[1]).toMatchObject({width:5,color:'#345678'});
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await defaults(page)).toEqual(original);expect(await objects(page)).toEqual([]);
+  await page.locator('#redoBtn').click();expect(await defaults(page)).toEqual(changed);expect(await objects(page)).toEqual(created);
+  await choose(page,'cone');await page.locator('#c').click({position:{x:300,y:300}});
+  expect((await objects(page)).at(-1)).toMatchObject({size:70,width:5,color:'#20d85a'});
+  await choose(page,'run');const box=await page.locator('#c').boundingBox();
+  await page.mouse.move(box.x+400,box.y+300);await page.mouse.down();await page.mouse.move(box.x+450,box.y+350,{steps:5});await page.mouse.up();
+  expect((await objects(page)).at(-1)).toMatchObject({kind:'path',width:5,color:'#345678'});
+  await page.reload();expect(await defaults(page)).toEqual(changed);
+});
+
+test('AI undo and redo use existing history without adding another history step',async({page})=>{
+  await respond(page,reply);await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const created=await objects(page);let request;
+  await page.route('**/api/chat',route=>{request=route.request().postDataJSON();return route.fulfill({json:{message:'Zurückgenommen.',commands:[{op:'project_action',action:'undo'}]}});});
+  await page.locator('#aiChatPrompt').fill('Rückgängig');await page.locator('#aiChatSend').click();
+  await expect(page.locator('#aiChatStatus')).toContainText('rückgängig gemacht');expect(await objects(page)).toEqual([]);
+  expect(request.scene.editor).toMatchObject({canUndo:true,canRedo:false});
+  await page.route('**/api/chat',route=>{request=route.request().postDataJSON();return route.fulfill({json:{message:'Wiederholt.',commands:[{op:'project_action',action:'redo'}]}});});
+  await page.locator('#aiChatPrompt').fill('Wiederholen');await page.locator('#aiChatSend').click();
+  await expect(page.locator('#aiChatStatus')).toContainText('wiederholt');expect(await objects(page)).toEqual(created);
+  expect(request.scene.editor).toMatchObject({canUndo:false,canRedo:true});
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
+});
+
+for(const action of ['save','export_svg','export_png','load']) {
+  test(`AI ${action} prepares one browser action and executes only after a user click`,async({page})=>{
+    await page.evaluate(()=>{
+      window.__actions=[];
+      window.showSaveFilePicker=async()=>{window.__actions.push('save');return {name:'ki-projekt.json',createWritable:async()=>({write:async blob=>{window.__saved=JSON.parse(await blob.text());},close:async()=>{}})};};
+      window.HandballExport.saveSvgText=async svg=>{window.__actions.push('export_svg');window.__svg=svg;};
+      window.HandballExport.saveCanvasPng=async canvas=>{window.__actions.push('export_png');window.__png=canvas.toDataURL();};
+      window.showOpenFilePicker=async()=>{window.__actions.push('load');return [{name:'geladen.json',getFile:async()=>new File([JSON.stringify({objects:[{kind:'symbol',type:'cone',x:300,y:300,size:40,width:2,color:'#20d85a',rotation:0}]})],'geladen.json',{type:'application/json'})}];};
+    });
+    await respond(page,{message:'Dateiaktion vorbereitet.',commands:[...reply.commands,{op:'project_action',action}]});
+    await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Dateiaktion vorbereitet');
+    const before=await objects(page);expect(before).toHaveLength(3);
+    expect(await page.evaluate(()=>window.__actions)).toEqual([]);
+    const button=page.locator('.ai-chat-file-action');await expect(button).toBeVisible();await button.click();
+    await expect.poll(()=>page.evaluate(()=>window.__actions)).toEqual([action]);
+    if(action==='save') {await expect.poll(()=>page.evaluate(()=>window.__saved?.objects)).toEqual(before);expect(await page.evaluate(()=>window.__saved.defaults.symbolSize)).toBe(50);}
+    if(action==='export_svg') expect(await page.evaluate(()=>window.__svg)).toContain('>1</text>');
+    if(action==='export_png') expect(await page.evaluate(()=>window.__png)).toContain('data:image/png');
+    if(action==='load') {await expect(page.locator('#status')).toContainText('Projekt geladen: geladen.json');expect(await objects(page)).toHaveLength(1);}
+    else expect(await objects(page)).toEqual(before);
+  });
+}
+
+test('stale file actions cannot export a later sketch and file-only actions do not create history',async({page})=>{
+  await page.evaluate(()=>{window.__exports=0;window.HandballExport.saveSvgText=async()=>{window.__exports++;};});
+  await respond(page,{message:'SVG vorbereitet.',commands:[{op:'project_action',action:'export_svg'}]});
+  await send(page);await expect(page.locator('.ai-chat-file-action')).toBeVisible();
+  await page.locator('#aiChatClose').click();await choose(page,'cone');await page.locator('#c').click({position:{x:300,y:300}});
+  await page.locator('#aiChatToggle').click();await page.locator('.ai-chat-file-action').click();
+  await expect(page.locator('#aiChatStatus')).toContainText('inzwischen verändert');expect(await page.evaluate(()=>window.__exports)).toBe(0);
+  await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
+});
+
+test('invalid extended batches preserve board, defaults and history atomically',async({page})=>{
+  await respond(page,reply);await send(page);await expect(page.locator('#aiChatStatus')).toContainText('Skizze aktualisiert');
+  const before=await board(page),previous=await defaults(page);
+  for(const bad of [
+    {op:'rotate',target:'object-0',angle:400},
+    {op:'symbol_type',target:'object-2',type:'defender'},
+    {op:'label_options',target:'object-0',visible:false,set:'60',label:'IL'},
+    {op:'copy_object',source:'object-0',id:'object-0',x:10,y:10},
+    {op:'edit_path',target:'object-2',type:'passCurve',points:[{x:10,y:10},{x:12,y:8}]},
+    {op:'rotate_group',targets:['object-0'],angle:180,center:{x:20,y:20}}
+  ]) {
+    await respond(page,{message:'Ungültig.',commands:[{op:'defaults',symbolSize:90,strokeWidth:null,strokeColor:null,markerColor:null},bad]});
+    await page.locator('#aiChatPrompt').fill('Ändern');await page.locator('#aiChatSend').click();await expect(page.locator('#aiChatSend')).toBeEnabled();
+    expect(await board(page)).toEqual(before);expect(await defaults(page)).toEqual(previous);
   }
   await page.locator('#aiChatClose').click();await page.locator('#undoBtn').click();expect(await objects(page)).toEqual([]);
 });

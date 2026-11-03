@@ -996,7 +996,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v103</span>
+    <span>Einstellungen · v104</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1202,7 +1202,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v103</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v104</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -2290,13 +2290,28 @@
   editorState.freehandColor = '#111111';
 
   editorState.objects = [];
+  function getEditorDefaults() {
+    return {symbolSize:+symbolSize.value,strokeWidth:+strokeWidth.value,strokeColor:strokeColor.value,markerColor:editorState.markerColor};
+  }
+  function applyEditorDefaults(defaults) {
+    if (!defaults) return;
+    const current=getEditorDefaults();
+    const validColor=value => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value) && value.length === 7;
+    symbolSize.value=Number.isFinite(defaults.symbolSize) && defaults.symbolSize >= 12 && defaults.symbolSize <= 100 ? defaults.symbolSize : current.symbolSize;
+    strokeWidth.value=Number.isFinite(defaults.strokeWidth) && defaults.strokeWidth >= 1 && defaults.strokeWidth <= 10 && Number.isInteger(defaults.strokeWidth*2) ? defaults.strokeWidth : current.strokeWidth;
+    strokeColor.value=validColor(defaults.strokeColor) ? defaults.strokeColor : current.strokeColor;
+    editorState.markerColor=validColor(defaults.markerColor) ? defaults.markerColor : current.markerColor;
+    markerCustomColor.value=editorState.markerColor;
+    updateMarkerSwatches();
+  }
   const historyManager = window.HandballStateHistory.createHistory({
     initialObjects: editorState.objects,
     maxEntries: 100,
-    captureMetadata: () => ({layout:editorState.layoutSettings,courts:editorState.cellCourts}),
+    captureMetadata: () => ({layout:editorState.layoutSettings,courts:editorState.cellCourts,defaults:getEditorDefaults()}),
     restoreMetadata: metadata => {
       editorState.layoutSettings = metadata.layout;
       editorState.cellCourts = metadata.courts;
+      applyEditorDefaults(metadata.defaults);
       layoutGrid.value = `${metadata.layout.cols}x${metadata.layout.rows}`;
       setActiveCell(metadata.layout.activeCell,false);
       resizeCanvasForStoryboard();
@@ -3939,7 +3954,7 @@
     draw();
 
     try {
-      await window.HandballExport.saveCanvasPng(
+      return await window.HandballExport.saveCanvasPng(
         canvas,
         'handball-skizze.png',
         (blob,name) => projectFileController.saveBlobForUser(blob,name)
@@ -3953,7 +3968,7 @@
 
   function getProjectData() {
     return {
-      version: 103,
+      version: 104,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
@@ -3964,6 +3979,7 @@
         zoomPercent:Math.round(editorState.canvasZoom * 100)
       },
       cellCourts: editorState.cellCourts.map(cloneCourtSettings),
+      defaults:getEditorDefaults(),
       objects:editorState.objects
     };
   }
@@ -4019,6 +4035,7 @@
     ensureCellCourts();
     layoutGrid.value = `${editorState.layoutSettings.cols}x${editorState.layoutSettings.rows}`;
     setActiveCell(editorState.layoutSettings.activeCell, false);
+    applyEditorDefaults(data.defaults);
 
     resizeCanvasForStoryboard();
 
@@ -4210,7 +4227,7 @@
   }
 
   const aiCommands = window.HandballAiCommands;
-  const aiSignature = () => JSON.stringify(getProjectData());
+  const aiSignature = () => JSON.stringify([getProjectData(),historyManager.debugState()]);
   window.HandballAiChat.createChat({
     onOpen: () => mobile.closePanels(),
     isBusy: () => !!(editorState.drawing || editorState.dragging || editorState.draggingEndpoint ||
@@ -4218,21 +4235,31 @@
       editorState.draggingLabelOffset || editorState.touchGestureSuppressEditor),
     signature: aiSignature,
     capture: () => {
+      const context=aiCommands.describeProject(editorState.objects,editorState.layoutSettings,editorState.cellCourts,{cells:storyboardCells,bounds:cellCourtRect});
+      const history=historyManager.debugState();
+      context.scene.editor={defaults:getEditorDefaults(),canUndo:history.historyLength > 1,canRedo:history.redoLength > 0};
       return {
-        ...aiCommands.describeProject(editorState.objects,editorState.layoutSettings,editorState.cellCourts,{cells:storyboardCells,bounds:cellCourtRect}),
+        ...context,
         signature:aiSignature(),
-        defaults:{symbolSize:+symbolSize.value,strokeWidth:+strokeWidth.value,
-          strokeColor:strokeColor.value,markerColor:editorState.markerColor}
+        defaults:getEditorDefaults()
       };
     },
     apply: (snapshot,reply) => {
+      const action=reply.commands.find(c => c.op === 'project_action')?.action;
+      if (action === 'undo' || action === 'redo') {
+        if (action === 'undo') undo(); else redo();
+        return {status:action === 'undo' ? 'Letzten Schritt rückgängig gemacht.' : 'Letzten Schritt wiederholt.'};
+      }
+      if (reply.commands.every(c => c.op === 'project_action')) return {action};
       const project = aiCommands.planProject(getProjectData(),snapshot,reply,{
         model:objectModel,defaults:snapshot.defaults,cells:storyboardCells,bounds:cellCourtRect
       });
+      historyManager.refreshMetadata();
       setTool('select');
       editorState.objects = project.objects;
       editorState.layoutSettings = {cols:project.layout.cols,rows:project.layout.rows,activeCell:project.layout.activeCell};
       editorState.cellCourts = project.cellCourts;
+      applyEditorDefaults(project.defaults);
       layoutGrid.value = `${project.layout.cols}x${project.layout.rows}`;
       setActiveCell(project.layout.activeCell,false);
       resizeCanvasForStoryboard();
@@ -4242,6 +4269,14 @@
       draw();
       status.textContent = 'KI hat die Skizze aktualisiert – Rückgängig ist möglich';
       mobile.closePanels();
+      return {action};
+    },
+    performAction: async action => {
+      if (action === 'save') { await saveProject(); return status.textContent; }
+      if (action === 'export_svg') { const result=await exportSvg(); return result?.method === 'cancelled' ? 'SVG-Speichern abgebrochen.' : 'SVG zum Speichern bereitgestellt.'; }
+      if (action === 'export_png') { const result=await exportPng(); return result?.method === 'cancelled' ? 'PNG-Speichern abgebrochen.' : 'PNG zum Speichern bereitgestellt.'; }
+      if (action === 'load') { document.getElementById('jsonLoadBtn').click(); return 'Bitte eine Projektdatei auswählen.'; }
+      throw new Error('Unbekannte Dateiaktion.');
     }
   });
 
@@ -4295,7 +4330,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v103 =====
+  // ===== PWA / Service Worker v104 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4306,7 +4341,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v103-reload';
+      const reloadKey = 'handballtrainer-sw-v104-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4325,7 +4360,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v103 registration OK');
+        console.info('[Handballtrainer] Service Worker v104 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

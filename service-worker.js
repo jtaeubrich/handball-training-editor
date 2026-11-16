@@ -1,4 +1,4 @@
-const VERSION = 'v106';
+const VERSION = 'v107';
 const STATIC_CACHE = `handballtrainer-static-${VERSION}`;
 const NAV_CACHE = `handballtrainer-nav-${VERSION}`;
 

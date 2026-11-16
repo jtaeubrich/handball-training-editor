@@ -996,7 +996,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v106</span>
+    <span>Einstellungen · v107</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1202,7 +1202,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v106</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v107</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1610,16 +1610,17 @@
         Sportmatte
       </button>
 
-      <button class="tool" data-tool="text">
-        <span class="ico" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 6H27M16 6V27M10 27H22M5 6V11M27 6V11" fill="none" stroke="currentColor" stroke-width="3"/></svg></span>
-        Textblock
-      </button>
       <button class="tool" data-tool="crashMat">
         <span class="ico"><svg viewBox="0 0 56 34"><rect x="5" y="5" width="46" height="24" rx="4" fill="#397cb8" stroke="#184d77" stroke-width="2.5"/><rect x="9" y="9" width="38" height="16" rx="3" fill="none" stroke="#8dc7ed" stroke-width="1.5"/><path d="M9 9 L47 25 M47 9 L9 25" stroke="#8dc7ed" stroke-opacity=".7" stroke-width="1"/></svg></span>
         Weichbodenmatte
       </button>
     </div>
   </div>
+
+  <button class="tool" data-tool="text" id="textBlockToolBtn">
+    <span class="ico" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 6H27M16 6V27M10 27H22M5 6V11M27 6V11" fill="none" stroke="currentColor" stroke-width="3"/></svg></span>
+    Textblock
+  </button>
 
   <div id="markerColorPanel" class="marker-colors" hidden>
     <div class="title">Farbe für Hütchen / Reifen / Markierung / Air Body</div>
@@ -4018,7 +4019,7 @@
 
   function getProjectData() {
     return {
-      version: 106,
+      version: 107,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
@@ -4385,7 +4386,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v106 =====
+  // ===== PWA / Service Worker v107 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4396,7 +4397,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v106-reload';
+      const reloadKey = 'handballtrainer-sw-v107-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4415,7 +4416,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v106 registration OK');
+        console.info('[Handballtrainer] Service Worker v107 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

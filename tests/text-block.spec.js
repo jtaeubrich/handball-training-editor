@@ -15,7 +15,7 @@ test.beforeEach(async({page})=>{
 test.afterEach(async({page})=>expect(errors.get(page)).toEqual([]));
 const objects=page=>page.evaluate(()=>window.__editorState.objects);
 async function create(page){
-  await page.locator('aside .tool[data-tool="text"]').evaluate(b=>b.click());
+  await page.locator('aside > .tool[data-tool="text"]').click();
   await page.locator('#c').click({position:{x:240,y:240}});
 }
 test('a text block can be edited, styled, moved, saved and exported without interpreting markup',async({page})=>{

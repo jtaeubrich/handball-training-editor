@@ -166,6 +166,20 @@
 
         const s=o.size;
 
+        if (o.type === 'text') {
+          const text=global.HandballText.layout(o);
+          c.font=text.font; c.textAlign=o.textAlign || 'left'; c.textBaseline='alphabetic';
+          text.lines.forEach((line,i)=>{
+            const y=text.size*.95+i*text.lineHeight;
+            c.fillText(line.text,text.x,y);
+            if (o.underline && line.text) {
+              const x=text.x-(o.textAlign === 'center' ? line.width/2 : o.textAlign === 'right' ? line.width : 0);
+              c.lineWidth=Math.max(1,text.size/18);c.beginPath();c.moveTo(x,y+text.size*.08);c.lineTo(x+line.width,y+text.size*.08);c.stroke();
+            }
+          });
+          c.restore();return;
+        }
+
         if (o.type === 'attacker' || o.type === 'attackerBall') {
           // Halb gefülltes Dreieck: obere Hälfte weiß, untere Hälfte schwarz.
           c.save();

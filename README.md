@@ -186,7 +186,7 @@ Für die Veröffentlichung werden typischerweise diese Dateien im Repository ver
 
 GitHub Pages kann anschließend direkt aus dem `main`-Branch und dem Root-Verzeichnis veröffentlicht werden.
 
-## Entwicklung und Regressionstests (v105)
+## Entwicklung und Regressionstests (v106)
 
 Auf Smartphones funktioniert der Zweifinger-Zoom im gesamten Zeichenbereich, einschließlich der grauen Ränder und der freien Fläche unter einem verkleinerten Canvas. Ein Finger auf dem Hintergrund verschiebt die Ansicht; auf dem Canvas bleibt Zeichnen und Auswählen erhalten. Ein zweiter Finger hebt einen bereits begonnenen Zeichenschritt auf und steuert ausschließlich die Ansicht, bis beide Finger losgelassen sind.
 
@@ -197,6 +197,8 @@ Die KI kann mit `label_offset` den Beschriftungsversatz von Angreifern, Abwehrsp
 Seit v104 kann die KI einzelne Symbole und Objektgruppen drehen, Symbole und Wege kopieren, Symboltypen wechseln, bestehende Pfadpunkte und Wegtypen bearbeiten sowie Labelsets und die Labelsichtbarkeit einstellen. Globale Größen-, Linien- und Markierungsfarbvorgaben werden mit dem Projekt und der lokalen Sicherung gespeichert. Neue Wege verwenden die eingestellte Linienfarbe. Zeichenänderungen einer Antwort bilden einschließlich Vorgaben einen Rückgängig-Schritt; die KI kann Rückgängig/Wiederholen auch direkt auslösen. Laden, Speichern und PNG-/SVG-Export werden im Chat mit einem Button vorbereitet, damit der Browser die Dateiauswahl aus einer direkten Klickgeste starten kann. Eine vorbereitete Dateiaktion verfällt, wenn die Skizze zwischenzeitlich verändert wurde. Felddarstellung, Ansicht und neue Freihandzeichnungen sind nicht Teil der KI-Steuerung.
 
 Seit v105 bietet der KI-Chat eine Modellauswahl: **Günstig – GPT-5.4 Mini** (Voreinstellung), **Mittel – GPT-5.6 Sol** und **Premium – GPT-6 Astra**. Die Auswahl wird im Browser gespeichert, während einer Anfrage gesperrt und bei jeder Antwort angezeigt. Preis-Richtwerte für Eingabe/Ausgabe werden vor dem Senden angezeigt. Alle Modelle verwenden den eingerichteten KI-Dienst und dessen API-Konto. Eine fehlende Modellfreigabe wird gemeldet; es erfolgt kein automatischer Wechsel. Der Dienst muss für die Modellauswahl aktualisiert sein (`modelSelectionVersion:1` unter `/health`).
+
+Seit v106 gibt es unter **Sonstiges → Textblock** frei platzierbare, mehrzeilige Texte. Nach dem Platzieren öffnet sich der Eigenschaftenbereich: Text eingeben, Schriftgröße (12–100 px), Farbe, Fett/Kursiv/Unterstreichen, Ausrichtung und Blockbreite (80–900 px) einstellen. Lange Zeilen werden umgebrochen. Textblöcke lassen sich wie andere Objekte auswählen, verschieben, kopieren und löschen; auch eine Platzierung unterhalb der Spielfeldlinien auf der Zeichenfläche ist möglich. Projektdatei, lokale Sicherung, Rückgängig/Wiederholen und PNG-/SVG-Export enthalten die Texte. Auf Smartphones steht das Werkzeug unter **Mehr** zur Verfügung. Textinhalt wird als reiner Text behandelt. Bestehende KI-Bearbeitung bleibt mit Textblöcken möglich; den Inhalt und die Formatierung bearbeitet man im Eigenschaftenbereich.
 
 Für echte KI-Antworten braucht der Editor einen separat eingerichteten OpenAI-Dienst. GitHub Pages stellt nur die Oberfläche bereit. Node-Dienst, Docker-Datei, Zugangsschutz und Einrichtung stehen unter [server/README.md](server/README.md). Ohne Dienstadresse und serverseitige Konfiguration ist noch kein echter KI-Chat möglich. OpenAI-Schlüssel gehören ausschließlich auf den Server. Server- und Browser-Tests verwenden kontrollierte Antworten und verursachen keine API-Kosten.
 

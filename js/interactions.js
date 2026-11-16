@@ -355,6 +355,9 @@
         deps.commit();
         deps.updateProperties();
         deps.draw();
+        if (symbol.type === 'text') {
+          deps.setTool('select');deps.setSingleSelection(editorState.objects.length-1);deps.updateProperties();deps.draw();deps.onTextCreated?.();
+        }
       });
 
       deps.canvas.addEventListener('pointermove', e => {

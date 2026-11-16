@@ -164,6 +164,12 @@
         const open = `<g transform="translate(${x} ${y}) rotate(${rot})">`;
         const close = `</g>`;
 
+        if (o.type === 'text') {
+          const text=global.HandballText.layout(o);
+          const anchor=o.textAlign === 'center' ? 'middle' : o.textAlign === 'right' ? 'end' : 'start';
+          return `${open}<text font-family="Arial" font-size="${text.size}" font-weight="${o.bold ? '700' : '400'}" font-style="${o.italic ? 'italic' : 'normal'}" text-decoration="${o.underline ? 'underline' : 'none'}" text-anchor="${anchor}" fill="${col}" xml:space="preserve">${text.lines.map((line,i)=>`<tspan x="${text.x}" y="${text.size*.95+i*text.lineHeight}">${esc(line.text)}</tspan>`).join('')}</text>${close}`;
+        }
+
         if (o.type === 'attacker' || o.type === 'attackerBall') {
           const clipId = `attackerClip${index}`;
           const ballSvg = o.type === 'attackerBall'

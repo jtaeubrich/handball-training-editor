@@ -58,7 +58,7 @@ test('preflight works only for configured origins and auth is mandatory',async t
 test('unconfigured services are inert and health does not expose configuration',async t=>{
   const s=await service(t,{env:{}});
   const response=await s.post();assert.equal(response.status,503);assert.equal(s.calls(),0);
-  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:5,modelSelectionVersion:1});
+  assert.deepEqual(await (await fetch(`${s.url}/health`)).json(),{ok:true,commandVersion:5,modelSelectionVersion:1,textBlocksVersion:1});
 });
 
 test('static serving cannot disclose environment files, Git data or server sources',async t=>{
@@ -407,4 +407,12 @@ test('an unavailable selected model returns a clear error without retrying anoth
     assert.equal(response.status,422);assert.deepEqual(seen,['gpt-6-astra']);
     assert.ok(!(await response.text()).includes('private'));
   }
+});
+
+test('text blocks are accepted as scene data and can be moved without treating text as instructions',()=>{
+  const object={id:'object-0',kind:'symbol',type:'text',label:'',text:'Beschreibung <script> & Torwurf',x:8,y:9,points:[]};
+  const context={...scene,objects:[object]};
+  assert.doesNotThrow(()=>validateRequest({...body,scene:context}));
+  assert.doesNotThrow(()=>protocol.validateReply({message:'Verschoben.',commands:[{op:'move',target:'object-0',x:10,y:10}]},context));
+  for(const extra of [{text:'x'.repeat(2001)},{text:42},{type:'attacker'}]) assert.throws(()=>validateRequest({...body,scene:{...scene,objects:[{...object,...extra}]}}));
 });

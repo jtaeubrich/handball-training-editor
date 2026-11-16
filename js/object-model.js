@@ -91,7 +91,8 @@
     bench: 'Turnbank',
     mat: 'Sportmatte',
     crashMat: 'Weichbodenmatte',
-    airbody: 'Air Body'
+    airbody: 'Air Body',
+    text: 'Textblock'
   };
 
   function objectSupportsLabel(o) {
@@ -126,6 +127,7 @@
 
   // Preserve legacy project defaults in place, including unrecognized fields.
   function normalizeLoadedObject(o) {
+    if (o?.kind === 'symbol' && o.type === 'text') global.HandballText.normalize(o);
     if (o && o.kind === 'symbol' && (o.type === 'attacker' ||
         (o.type === 'attackerBall' && ['numbers','custom'].includes(o.attackFormation)))) {
       if (typeof o.showLabel !== 'boolean') o.showLabel = false;
@@ -228,6 +230,7 @@
       symbol.labelOffsetX = 0;
       symbol.labelOffsetY = 0;
     }
+    if (type === 'text') Object.assign(symbol,{size:24,text:'Text eingeben',textWidth:320,bold:false,italic:false,underline:false,textAlign:'left',showLabel:false});
     return symbol;
   }
 

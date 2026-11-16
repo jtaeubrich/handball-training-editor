@@ -121,7 +121,9 @@
       const hasOffsets = Object.hasOwn(object,'labelOffsetX') || Object.hasOwn(object,'labelOffsetY');
       const hasStyle = Object.hasOwn(object,'style');
       const hasEditing = Object.hasOwn(object,'editing');
-      exact(object,['id','kind','type','label','x','y','points',...(hasOffsets ? ['labelOffsetX','labelOffsetY'] : []),...(hasStyle ? ['style'] : []),...(hasEditing ? ['editing'] : [])]);
+      const hasText=Object.hasOwn(object,'text');
+      exact(object,['id','kind','type','label','x','y','points',...(hasOffsets ? ['labelOffsetX','labelOffsetY'] : []),...(hasStyle ? ['style'] : []),...(hasEditing ? ['editing'] : []),...(hasText ? ['text'] : [])]);
+      if (hasText && (object.kind !== 'symbol' || object.type !== 'text' || typeof object.text !== 'string' || object.text.length > 2000)) fail('Ungültiger Textblock im Skizzenkontext.');
       id(object.id); label(object.label);
       if (hasOffsets) { labelOffset(object.labelOffsetX); labelOffset(object.labelOffsetY); }
       if (hasStyle) {
@@ -136,7 +138,7 @@
         const e = object.editing;
         if (!Number.isFinite(e.rotation) || e.rotation < 0 || e.rotation >= 360 || typeof e.showLabel !== 'boolean' || ![null,'33','24','321','60','numbers','custom'].includes(e.labelSet)) fail('Ungültige Objekteigenschaften.');
       }
-      if (ids.has(object.id) || !['symbol','path','freehand'].includes(object.kind) || !(symbolTypes.includes(object.type) || pathTypes.includes(object.type) || object.type === 'freehand') || !Number.isFinite(object.x) || !Number.isFinite(object.y) || Math.abs(object.x) > 1000 || Math.abs(object.y) > 1000 || !Array.isArray(object.points) || object.points.length > 200) fail('Ungültiges Objekt im Skizzenkontext.');
+      if (ids.has(object.id) || !['symbol','path','freehand'].includes(object.kind) || !(symbolTypes.includes(object.type) || pathTypes.includes(object.type) || object.type === 'freehand' || object.kind === 'symbol' && object.type === 'text') || !Number.isFinite(object.x) || !Number.isFinite(object.y) || Math.abs(object.x) > 1000 || Math.abs(object.y) > 1000 || !Array.isArray(object.points) || object.points.length > 200) fail('Ungültiges Objekt im Skizzenkontext.');
       ids.add(object.id);
       for (const p of object.points) {
         exact(p,['x','y']);
@@ -319,7 +321,7 @@
         points = [{x:o.x1,y:o.y1},...(Number.isFinite(o.cx1) ? [{x:o.cx1,y:o.cy1},{x:o.cx2,y:o.cy2}] : []),{x:o.x2,y:o.y2}];
       }
       const offset = value => Number.isFinite(value) ? Math.max(-50,Math.min(50,Math.round(value))) : 0;
-      descriptions.push({id:objectId,kind:o.kind,type:o.type,label:typeof o.label === 'string' ? o.label.slice(0,24) : '',...rounded(start),points:points.map(rounded),
+      descriptions.push({id:objectId,kind:o.kind,type:o.type,label:typeof o.label === 'string' ? o.label.slice(0,24) : '',...rounded(start),points:points.map(rounded),...(o.type === 'text' ? {text:String(o.text || '').slice(0,2000)} : {}),
         labelOffsetX:offset(o.labelOffsetX),labelOffsetY:offset(o.labelOffsetY),
         style:{color:typeof o.color === 'string' && o.color.length === 7 && /^#[0-9a-fA-F]{6}$/.test(o.color) ? o.color.toLowerCase() : null,
           size:o.kind === 'symbol' && Number.isFinite(o.size) && o.size > 0 && o.size <= 10000 ? o.size : null,

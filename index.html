@@ -996,7 +996,7 @@
 
 <div id="mobileSettingsSheet" class="mobile-settings-sheet">
   <div class="tool-sheet-header">
-    <span>Einstellungen · v105</span>
+    <span>Einstellungen · v106</span>
     <button id="mobileSettingsClose" class="tool-sheet-close" aria-label="Schließen">×</button>
   </div>
 
@@ -1202,7 +1202,7 @@
 <div id="helpModal" class="help-modal" aria-hidden="true">
   <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="helpDialogTitle">
     <div class="help-dialog-header">
-      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v105</div>
+      <div id="helpDialogTitle" class="help-dialog-title">Hilfe · v106</div>
       <button id="helpOpenReadmeBtn" type="button" title="README in neuem Tab öffnen">↗</button>
       <button id="helpCloseBtn" class="help-close-btn" type="button" title="Hilfe schließen" aria-label="Hilfe schließen">×</button>
     </div>
@@ -1610,6 +1610,10 @@
         Sportmatte
       </button>
 
+      <button class="tool" data-tool="text">
+        <span class="ico" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 6H27M16 6V27M10 27H22M5 6V11M27 6V11" fill="none" stroke="currentColor" stroke-width="3"/></svg></span>
+        Textblock
+      </button>
       <button class="tool" data-tool="crashMat">
         <span class="ico"><svg viewBox="0 0 56 34"><rect x="5" y="5" width="46" height="24" rx="4" fill="#397cb8" stroke="#184d77" stroke-width="2.5"/><rect x="9" y="9" width="38" height="16" rx="3" fill="none" stroke="#8dc7ed" stroke-width="1.5"/><path d="M9 9 L47 25 M47 9 L9 25" stroke="#8dc7ed" stroke-opacity=".7" stroke-width="1"/></svg></span>
         Weichbodenmatte
@@ -1663,6 +1667,17 @@
   </div>
 
   <div id="propPanel" hidden>
+    <div id="textBlockProps" hidden>
+      <label for="propTextContent">Text</label>
+      <textarea id="propTextContent" rows="4" maxlength="2000" placeholder="Freien Text eingeben …" style="width:100%;box-sizing:border-box;font:inherit;resize:vertical"></textarea>
+      <div class="prop-row"><label for="propTextWidth">Blockbreite</label><input id="propTextWidth" type="number" min="80" max="900" value="320"></div>
+      <div class="prop-row"><label for="propTextAlign">Ausrichtung</label><select id="propTextAlign"><option value="left">Linksbündig</option><option value="center">Zentriert</option><option value="right">Rechtsbündig</option></select></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin:8px 0">
+        <label><input id="propTextBold" type="checkbox"> <b>Fett</b></label>
+        <label><input id="propTextItalic" type="checkbox"> <i>Kursiv</i></label>
+        <label><input id="propTextUnderline" type="checkbox"> <u>Unterstrichen</u></label>
+      </div>
+    </div>
     <div class="prop-row">
       <label>Objekt</label>
       <strong id="propType">–</strong>
@@ -1865,6 +1880,7 @@
 <script src="./js/state-history.js"></script>
 <script src="./js/selection.js"></script>
 <script src="./js/geometry.js"></script>
+<script src="./js/text-block.js"></script>
 <script src="./js/object-model.js"></script>
 <script src="./js/ai-commands.js"></script>
 <script src="./js/ai-models.js"></script>
@@ -2550,6 +2566,7 @@
 
   function getObjectBounds(o) {
     if (!o) return null;
+    if (o.kind === 'symbol' && o.type === 'text') return window.HandballText.bounds(o);
     if (o.kind === 'symbol') {
       let rx = o.size * 0.9;
       let ry = o.size * 0.9;
@@ -3127,7 +3144,10 @@
     ctx.setLineDash([4,3]);
 
     if (o.kind === 'symbol') {
-      if (o.type === 'bench' || o.type === 'mat' || o.type === 'crashMat' || o.type === 'airbody') {
+      if (o.type === 'text') {
+        const text=window.HandballText.layout(o);
+        ctx.save();ctx.translate(o.x,o.y);ctx.rotate((o.rotation || 0)*Math.PI/180);ctx.strokeRect(-3,-3,text.width+6,text.height+6);ctx.restore();
+      } else if (o.type === 'bench' || o.type === 'mat' || o.type === 'crashMat' || o.type === 'airbody') {
         const dims = o.type === 'bench'
           ? {w:o.size*2.36, h:o.size*.60}
           : (o.type === 'mat'
@@ -3364,6 +3384,15 @@
 
     const isSymbol = o.kind === 'symbol';
     const allSymbols = selectedList.length > 0 && selectedList.every(item => item.kind === 'symbol');
+    const allText=selectedList.length > 0 && selectedList.every(item => item.kind === 'symbol' && item.type === 'text');
+    document.getElementById('textBlockProps').hidden=!allText;
+    if (allText && syncInputs) {
+      document.getElementById('propTextContent').disabled=multi;
+      document.getElementById('propTextContent').value=multi ? '' : (o.text || '');
+      document.getElementById('propTextWidth').value=o.textWidth || 320;
+      document.getElementById('propTextAlign').value=o.textAlign || 'left';
+      for (const [id,key] of [['propTextBold','bold'],['propTextItalic','italic'],['propTextUnderline','underline']]) document.getElementById(id).checked=selectedList.every(item=>!!item[key]);
+    }
     const allHaveColor = selectedList.length > 0 && selectedList.every(item => typeof item.color === 'string');
     const allMarkers = allSymbols && selectedList.every(item => markerTypes.has(item.type));
     const allPaths = selectedList.length > 0 && selectedList.every(item => item.kind === 'path' && pathTools.has(item.type));
@@ -3374,6 +3403,7 @@
     const allRotatable = allSymbols && selectedList.every(item => rotatableTypes.has(item.type));
 
     propSize.parentElement.style.display = allSymbols ? '' : 'none';
+    propSize.parentElement.querySelector('label').textContent=allText ? 'Schriftgröße (px)' : 'Größe';
     propColor.parentElement.style.display = allHaveColor ? '' : 'none';
 
     if (syncInputs) {
@@ -3712,6 +3742,22 @@
     updateProperties();
   });
 
+  document.getElementById('textBlockProps').addEventListener('keydown',e=>e.stopPropagation());
+  for (const [id,key] of [['propTextContent','text'],['propTextWidth','textWidth'],['propTextAlign','textAlign'],['propTextBold','bold'],['propTextItalic','italic'],['propTextUnderline','underline']]) {
+    const input=document.getElementById(id);
+    const apply=save=>{
+      const targets=selectedObjects().filter(o=>o.kind === 'symbol' && o.type === 'text');
+      if (!targets.length) return;
+      for (const o of targets) {
+        o[key]=input.type === 'checkbox' ? input.checked : key === 'textWidth' ? +input.value : input.value;
+        window.HandballText.normalize(o);
+      }
+      draw();if(save) {commit();updateProperties();}
+    };
+    if (key === 'text') input.addEventListener('input',()=>apply(false));
+    input.addEventListener('change',()=>apply(true));
+  }
+
   propColor.addEventListener('change', () => {
     if (editorState.selected >= 0) {
       const targets = selectedObjects();
@@ -3972,7 +4018,7 @@
 
   function getProjectData() {
     return {
-      version: 105,
+      version: 106,
       canvas: { width:canvas.width, height:canvas.height },
       court: cloneCourtSettings(editorState.cellCourts[0] || editorState.courtSettings),
       layout: {
@@ -4165,6 +4211,11 @@
   });
 
   const interactions = window.HandballInteractions.createInteractions(editorState, {
+    setTool,
+    onTextCreated: () => {
+      if (window.matchMedia('(max-width: 700px)').matches) document.getElementById('mobilePropsBtn').click();
+      else {const input=document.getElementById('propTextContent');input.focus();input.select();}
+    },
     LABEL_OFFSET_MAX,
     LABEL_OFFSET_MIN,
     canvas,
@@ -4334,7 +4385,7 @@
   draw();
 })();
 
-  // ===== PWA / Service Worker v105 =====
+  // ===== PWA / Service Worker v106 =====
   // The installed Home-Screen app must not keep running an older cached editor.
   // Always check the service worker script from the network and reload once
   // when a newer worker takes control.
@@ -4345,7 +4396,7 @@
       if (swControllerReloaded) return;
       swControllerReloaded = true;
 
-      const reloadKey = 'handballtrainer-sw-v105-reload';
+      const reloadKey = 'handballtrainer-sw-v106-reload';
       if (sessionStorage.getItem(reloadKey) !== '1') {
         sessionStorage.setItem(reloadKey, '1');
         window.location.reload();
@@ -4364,7 +4415,7 @@
 
         // Explicitly check for an update at every app start.
         await registration.update();
-        console.info('[Handballtrainer] Service Worker v105 registration OK');
+        console.info('[Handballtrainer] Service Worker v106 registration OK');
       } catch (err) {
         console.warn('[Handballtrainer] Service Worker registration failed:', err);
       }

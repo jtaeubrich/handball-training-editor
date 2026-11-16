@@ -127,7 +127,10 @@
         const p=inverseRotatePoint(x,y,o.x,o.y,o.rotation||0);
         const lx=p.x-o.x, ly=p.y-o.y;
 
-        if(o.type==='bench') {
+        if(o.type==='text') {
+          const text=global.HandballText.layout(o);
+          if(lx>=-5 && lx<=text.width+5 && ly>=-5 && ly<=text.height+5) return i;
+        } else if(o.type==='bench') {
           if(Math.abs(lx)<=o.size*1.125&&Math.abs(ly)<=o.size*.24) return i;
         } else if(o.type==='mat') {
           if(Math.abs(lx)<=o.size*.825&&Math.abs(ly)<=o.size*.46) return i;

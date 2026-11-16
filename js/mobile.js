@@ -241,7 +241,7 @@
       },
       other: {
         title:'Sonstiges',
-        tools:['cone','ring','disc','airbody','bench','mat','crashMat']
+        tools:['cone','ring','disc','airbody','bench','mat','crashMat','text']
       }
     };
 

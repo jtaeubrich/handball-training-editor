@@ -28,7 +28,7 @@
       if (t === 'defender' || t === 'goalkeeper') {
         editorState.defenseGroupSelection = t;
       }
-      if (['cone','ring','disc','airbody','bench','mat','crashMat'].includes(t)) {
+      if (['cone','ring','disc','airbody','bench','mat','crashMat','text'].includes(t)) {
         editorState.otherGroupSelection = t;
       }
 
@@ -46,7 +46,7 @@
       if (t === 'defender' || t === 'goalkeeper') {
         defenseGroupBtn?.classList.add('active');
       }
-      if (['cone','ring','disc','airbody','bench','mat','crashMat'].includes(t)) {
+      if (['cone','ring','disc','airbody','bench','mat','crashMat','text'].includes(t)) {
         otherGroupBtn?.classList.add('active');
       }
       if (typeof pathVariantToGroup !== 'undefined' && pathVariantToGroup[t]) {
@@ -237,7 +237,7 @@
         'tool:freehand':['freehand']
       },
       other: {
-        'group:other':['cone','ring','disc','airbody','bench','mat','crashMat']
+        'group:other':['cone','ring','disc','airbody','bench','mat','crashMat','text']
       }
     };
 
